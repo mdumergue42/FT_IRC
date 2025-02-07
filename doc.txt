@@ -1,0 +1,12 @@
+Description des ft du sujet :
+
+https://chatgpt.com/share/67a5d543-80ec-8002-91e4-3ecf845ea26f
+
+_______________________________________________________________
+
+Socket :
+
+https://www.linuxhowtos.org/C_C++/socket.htm?userrate=3
+https://www.geeksforgeeks.org/socket-programming-in-cpp/
+
+_______________________________________________________________

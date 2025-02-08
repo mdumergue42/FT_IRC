@@ -6,19 +6,13 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/07 10:27:38 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 15:28:19 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/08 17:50:45 by basverdi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <iostream>
-#include <sys/poll.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <poll.h>
-#include <cstring>
+#include "./includes/Libs.hpp"
 
-int	main(void)
+int	main2(void)
 {
 	std::cout << "Hello World" << std::endl;
 
@@ -27,7 +21,7 @@ int	main(void)
 	sockaddr_in adServ; // sockaddr_in -> stock add du socket
 
 	adServ.sin_family = AF_INET; // AF_INET -> protocole IPv4
-	adServ.sin_port = htons(6667);
+	adServ.sin_port = htons(8080);
 	adServ.sin_addr.s_addr = INADDR_ANY; // INADDR_ANY -> ecouter tt les IP dispo
 
 	if (bind(serverSocket, (struct sockaddr *)&adServ, sizeof(adServ)) < 0)

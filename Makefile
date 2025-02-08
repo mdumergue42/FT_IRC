@@ -4,7 +4,7 @@ CCPP = c++
 
 OBJSDIR = obj/
 
-I_DIR = includes/
+I_DIR = src/includes/
 
 INCLUDE = -I $(I_DIR)
 

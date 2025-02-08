@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/07 10:27:38 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 09:19:48 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/08 09:56:25 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,11 +24,11 @@ int	main(void)
 	sockaddr_in adServ; // sockaddr_in -> stock add du socket
 
 	adServ.sin_family = AF_INET; // AF_INET -> protocole IPv4
-	adServ.sin_port = htons(8080);
+	adServ.sin_port = htons(6667);
 	adServ.sin_addr.s_addr = INADDR_ANY; // INADDR_ANY -> ecouter tt les IP dispo
 
 	bind(serverSocket, (struct sockaddr *)&adServ, sizeof(adServ));
-	listen(serverSocket, 42);
+	listen(serverSocket, 5);
 
 	int	clientSocket = accept(serverSocket, nullptr, nullptr);
 

@@ -25,7 +25,70 @@ htons -> convertit les octets entre hote et reseau
 recv -> recoit des donnees sur un socket
 poll -> surveille plusieurs descripteurs
 
+_______________________________________________________________
+
+Commandes de canaux :
+
+http://dicoinformatique.chez.com/irc.htm
+
+/join #nomduchannel <- pouvoir rejoindre un channel
+
+/nick <- pouvoir changer de pseudo
+
+/kick nameofuser <- ejecte un client du channel, a condition d'etre admin
+
+/invite nameofuser <- invite un client, a condition d'etre admin
+
+/topic #nomduchannel <- modif ou afficher theme du channel
 
 
+/mode avec-option <- peut s'utiliser sur le channel comme sur l'utilisateur
+
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+Faire 3 CLASSES : Channel | Server | Client
+
+Elements a placé : un std::map<socket, nickname> ;
+
+Dans Server : 2 vectors|map -> 1 pour les channels, 1 pour les clients. 
+
+Dans Channel : idk
+
+Dans Client : 
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+Ce qu'il y a faire :
+
+__Pour CHANNEL :
+
+Si le channel que le client veut rejoindre n'existe pas, ca devra le creer, et le client le rejoindra en tant qu'operateur.
+Si le channel existe deja le client le rejoint mais en tant que simple client.
+Verif pour rejoindre si limite de membres max, si il y a pas une liste d'invité prédéfini, si il y a un mdp pour rejoindre le channel
+
+ATTENTION Subtilité pour le client qui veut rejoindre un channel:
+|-> si le pseudo est deja pris, lui donner le second choix UNIQUEMENT si il n'est pas pris aussi
+Si les 2 sont pris lui dire "Nickname is erroneous or already in use. Use /NICK to try another."
+
+__Pour SERVER :
+
+pour gerer tout les fd
+while 1 avec poll inside
+
+while (1)
+{
+	poll etc.
+
+		accept..
+}
+
+__Pour CLIENT :
+
+-lui demander un pseudo et un second choix
+
+ ATTENTION Subtilité pour le client qui veut rejoindre un channel:
+|-> si le pseudo est deja pris, lui donner le second choix UNIQUEMENT si il n'est pas pris aussi
+Si les 2 sont pris lui dire "Nickname is erroneous or already in use. Use /NICK to try another."
 
 

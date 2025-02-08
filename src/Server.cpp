@@ -5,26 +5,21 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 13:04:09 by madumerg         ###   ########.fr       */
+/*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
+/*   Updated: 2025/02/08 14:00:09 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef	SERVER_CPP
-#define	SERVER_CPP
+#include "Server.hpp"
 
-#include <string>
+Server::Server( void ) {}
 
-class	Server {
-	public :
-		Server(void);
-		Server(Server const &);
-		~Server(void);
-		Server & operator=(Server const &);
+Server::Server( Server const & copy ) {*this = copy;}
 
-	private :
-		std::string	_password;
-		std::string	_nickname;
-};
+Server::~Server( void ) {}
 
-#endif
+Server &	Server::operator=( Server const & op ) {
+	if (this != &op)
+		return *this;
+	return *this;
+}

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 09:20:49 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 12:21:57 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/08 15:01:37 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,13 +29,14 @@ int	main(void)
 	adServ.sin_port = htons(6667);
 	adServ.sin_addr.s_addr = INADDR_ANY;
 
-	connect(clientSocket, (struct sockaddr *)&adServ, sizeof(adServ));
 
-	std::string messs;
-	std::getline(std::cin, messs);
-	const char * mess = messs.c_str();
-	send(clientSocket, mess, strlen(mess), 0);
+		if (connect(clientSocket, (struct sockaddr *)&adServ, sizeof(adServ)) < 0)
+			return 1;
+		std::string messs;
+		std::getline(std::cin, messs);
+		const char * mess = messs.c_str();
+		send(clientSocket, mess, strlen(mess), 0);
 
-	close(clientSocket);
+
 	return 0;
 }

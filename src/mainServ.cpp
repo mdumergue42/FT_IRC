@@ -6,14 +6,17 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/07 10:27:38 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 09:56:25 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/08 15:28:19 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <poll.h>
+#include <cstring>
 
 int	main(void)
 {
@@ -27,16 +30,31 @@ int	main(void)
 	adServ.sin_port = htons(6667);
 	adServ.sin_addr.s_addr = INADDR_ANY; // INADDR_ANY -> ecouter tt les IP dispo
 
-	bind(serverSocket, (struct sockaddr *)&adServ, sizeof(adServ));
+	if (bind(serverSocket, (struct sockaddr *)&adServ, sizeof(adServ)) < 0)
+		return 1;
 	listen(serverSocket, 5);
+	
+	struct	pollfd	p;
+	memset(&p, 0, sizeof(p));
+	p.fd = serverSocket;
+	p.events = POLLIN;
+	nfds_t	nfds = 1024;
 
-	int	clientSocket = accept(serverSocket, nullptr, nullptr);
+	while (1)
+	{
+		for (size_t i = 0; i < nfds; i++) {
+			if (poll(&p, nfds, 1000) == 1)
+			{
+				int	clientSocket = accept(serverSocket, nullptr, nullptr);
 
-	char buffer[1024] = {0};
-	recv(clientSocket, buffer, sizeof(buffer), 0);
-	std::cout << "Message du client : " << buffer << std::endl;
+				char buffer[1024] = {0};
+				recv(clientSocket, buffer, sizeof(buffer), 0);
+				std::cout << "Message du client : " << buffer << std::endl;
 
-	close(serverSocket);
+			}
+		}
+		close(serverSocket);
+	}
 
 	return 0;
 }

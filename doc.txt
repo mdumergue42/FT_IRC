@@ -10,3 +10,22 @@ https://www.linuxhowtos.org/C_C++/socket.htm?userrate=3
 https://www.geeksforgeeks.org/socket-programming-in-cpp/
 
 _______________________________________________________________
+
+SOCK_STREAM -> type socket TCP
+sockaddr_in -> stock addr du socket
+AF_INET -> protocole IPv4
+INADDR_ANY -> ecouter tt les IP dispo
+
+
+bind -> associe un socket a une addr locale
+connect -> connecte un socket a une addr distante
+listen -> met socket en mode ecoute pour accepter les connexions
+accept -> accepte une connnexion entrante
+htons -> convertit les octets entre hote et reseau
+recv -> recoit des donnees sur un socket
+poll -> surveille plusieurs descripteurs
+
+
+
+
+

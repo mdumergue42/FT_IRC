@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/08 18:59:00 by basverdi         ###   ########.fr       */
+/*   Updated: 2025/02/10 03:13:49 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,7 +59,7 @@ void Server::NewClient() {
     if (client_socket < 0)
 		throw std::runtime_error("Client connection failed");
 
-	std::cout << "Nouveau client connecté : " << client_socket << std::endl;
+	std::cout << "\033[32mNouveau client connecté : " << client_socket << "\033[0m" << std::endl;
         
     struct pollfd client_pollfd;
 	client_pollfd.fd = client_socket;
@@ -83,14 +83,14 @@ void Server::run() {
 					std::cout << bytes << std::endl;
 					if (bytes <= 0)
 					{
-						std::cout << "Client disconnected : " << _pollfds[i].fd << std::endl;
+						std::cout << "\033[33mClient disconnected : " << _pollfds[i].fd << "\033[0m" << std::endl;
 						close(_pollfds[i].fd);
 			            _pollfds.erase(_pollfds.begin() + i);
 					} else 
-						std::cout << "Message du client : " << buffer << std::endl;
+						std::cout << "Message du client : " << buffer;
 				}
 			}
 		}
-		close(_server_fd);
 	}
+	close(_server_fd);
 }

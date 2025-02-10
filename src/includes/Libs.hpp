@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/08 17:50:08 by basverdi         ###   ########.fr       */
+/*   Updated: 2025/02/10 02:16:18 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,5 @@
 #include <vector>
 #include <exception>
 
-#define nullptr 0
 
 #endif

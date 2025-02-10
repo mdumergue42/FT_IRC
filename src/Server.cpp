@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:33:41 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/10 20:40:56 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,22 +64,21 @@ bool	Server::isTaken( int code, std::string name ) {
 	}
 }
 
-void	Server::sendErrMess(int fds, std::string message ) {
+void	Server::sendErrMess(int & fds, std::string message ) {
 	const char *mess = message.c_str();
 	send(fds, mess, sizeof(mess), 0);
+	std::cout << message << std::endl;
 }
 
 std::vector<std::string>	Server::splitCom( char *buffer ) {
 	std::vector<std::string>	commands;
 	std::string	tmp = "";
 
-	std::cout << "buffer -> " << buffer << std::endl;
 	for (size_t i = 0; buffer[i] != '\0'; i++) {
 		if (buffer[i] == ' ' || buffer[i] == '\n')
 		{
 			if (!tmp.empty())
 			{
-				std::cout << "tmp -> " << tmp << std::endl;
 				commands.push_back(tmp);
 				tmp = "";
 			}
@@ -159,12 +158,9 @@ void Server::run() {
 						}
 
 						std::vector<std::string> commands = this->splitCom(buffer); //pour recup par ex NICK clientyoupi
-						std::cout << "after split com\n";
 						std::string	com = commands[0];
-						std::cout << "com -> " << com << std::endl;
 						if (com == "NICK" && commands.size() > 1)
 						{
-							std::cout << "inside NICK\n";
 							bool	isTaken = this->isTaken(1, commands[1]);
 							if (isTaken)
 								this->sendErrMess(_pollfds[i].fd, "Nickname is already used");

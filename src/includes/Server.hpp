@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:08:30 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/10 20:36:37 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ class	Server {
 
 		Client*	getFdsClient(int);
 		bool	isTaken(int, std::string);
-		void	sendErrMess(int, std::string);
+		void	sendErrMess(int &, std::string);
 		std::vector<std::string>	splitCom(char *);
 
 	private :

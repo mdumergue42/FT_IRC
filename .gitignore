@@ -1,6 +1,6 @@
 Client
 ircserv
-./a.out
+a.out
 
-/obj
+/obj/*
 .DS_*

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:40:56 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/10 23:17:05 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,7 @@ bool	Server::isTaken( int code, std::string name ) {
 
 void	Server::sendErrMess(int & fds, std::string message ) {
 	const char *mess = message.c_str();
-	send(fds, mess, sizeof(mess), 0);
+	send(fds, mess, strlen(mess), 0);
 	std::cout << message << std::endl;
 }
 
@@ -136,7 +136,7 @@ void Server::run() {
 			if (_pollfds[0].revents & POLLIN)
 				NewClient();
 
-			for (size_t i = 1; i < _pollfds.size(); i++) {
+			for (size_t i = _pollfds.size() - 1; i > 0; i--) {
 				if (_pollfds[i].revents & POLLIN) {
 					char buffer[1024] = {0};
 					ssize_t bytes = recv(_pollfds[i].fd, buffer, sizeof(buffer), 0);
@@ -167,7 +167,6 @@ void Server::run() {
 							else
 							{
 								client->setNickname(commands[1]);
-								_clientfds.push_back(client);
 								this->sendErrMess(_pollfds[i].fd, "Nickname accepted");
 							}
 						}

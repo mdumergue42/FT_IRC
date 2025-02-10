@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 03:13:49 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/10 20:28:09 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,67 @@ Server &	Server::operator=( Server const & op ) {
 	if (this != &op)
 		return *this;
 	return *this;
+}
+
+Client *	Server::getFdsClient( int fds ) {
+	for (size_t i = 0; i < _clientfds.size(); i++) {
+		if (_clientfds[i]->getFds() == fds)
+			return _clientfds[i];
+	}
+	return NULL;
+}
+
+
+bool	Server::isTaken( int code, std::string name ) {
+	bool	isTaken = false;
+	if (code == 1)
+	{
+		for (size_t i = 0; i < _clientfds.size(); i++) {
+			if (_clientfds[i]->getNickname() == name)
+			{
+				isTaken = true;
+				break ;
+			}
+		}
+		return isTaken;
+	}
+	else
+	{
+		for (size_t i = 0; i < _clientfds.size(); i++) {
+			if (_clientfds[i]->getUsername() == name)
+			{
+				isTaken = true;
+				break ;
+			}
+		}
+		return isTaken;
+	}
+}
+
+void	Server::sendErrMess(int fds, std::string message ) {
+	const char *mess = message.c_str();
+	send(fds, mess, sizeof(mess), 0);
+}
+
+std::vector<std::string>	Server::splitCom( char *buffer ) {
+	std::vector<std::string>	commands;
+	std::string	tmp = "";
+
+	std::cout << "buffer -> " << buffer << std::endl;
+	for (size_t i = 0; buffer[i] != '\0'; i++) {
+		if (buffer[i] == ' ' || buffer[i] == '\n')
+		{
+			if (!tmp.empty())
+			{
+				std::cout << "tmp -> " << tmp << std::endl;
+				commands.push_back(tmp);
+				tmp = "";
+			}
+			else
+				tmp += buffer[i];
+		}
+	}
+	return commands;
 }
 
 void Server::initserv() {
@@ -86,8 +147,58 @@ void Server::run() {
 						std::cout << "\033[33mClient disconnected : " << _pollfds[i].fd << "\033[0m" << std::endl;
 						close(_pollfds[i].fd);
 			            _pollfds.erase(_pollfds.begin() + i);
-					} else 
+					}
+					else
+					{
 						std::cout << "Message du client : " << buffer;
+						Client *client = getFdsClient(_pollfds[i].fd); //verifier si il existe pas deja
+						if (!client)
+						{
+							client = new Client(_pollfds[i].fd);
+							_clientfds.push_back(client);
+						}
+
+						std::vector<std::string> commands = this->splitCom(buffer); //pour recup par ex NICK clientyoupi
+						std::cout << "after split com\n";
+						std::string	com = commands[0];
+						std::cout << "com -> " << com << std::endl;
+						if (com == "NICK" && commands.size() > 1)
+						{
+							std::cout << "inside NICK\n";
+							bool	isTaken = this->isTaken(1, commands[1]);
+							if (isTaken)
+								this->sendErrMess(_pollfds[i].fd, "Nickname is already used");
+							else
+							{
+								client->setNickname(commands[1]);
+								_clientfds.push_back(client);
+								this->sendErrMess(_pollfds[i].fd, "Nickname accepted");
+							}
+						}
+						else if (com == "USER" && commands.size() > 1)
+						{
+							std::cout << "inside USER\n";
+							if (client->getNickname().empty())
+								this->sendErrMess(_pollfds[i].fd, "You must first define a nickname. Ex : NICK yourname");
+							bool	isTaken = this->isTaken(0, commands[1]);
+							if (isTaken)
+								this->sendErrMess(_pollfds[i].fd, "Username is already used");
+							else
+							{
+								client->setUsername(commands[1]);
+								client->setAuth(true);
+								this->sendErrMess(_pollfds[i].fd, "Username accepted");
+							}
+						}
+						else if (com == "JOIN")
+						{
+							if (!client->isAuth())
+								this->sendErrMess(_pollfds[i].fd, "You are not authenticated");
+							//chiant a venir
+						}
+						else
+							std::cout << "tamere irc\n";
+					}
 				}
 			}
 		}

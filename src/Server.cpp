@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:28:09 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/10 20:33:41 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,9 +83,9 @@ std::vector<std::string>	Server::splitCom( char *buffer ) {
 				commands.push_back(tmp);
 				tmp = "";
 			}
-			else
-				tmp += buffer[i];
 		}
+		else
+			tmp += buffer[i];
 	}
 	return commands;
 }

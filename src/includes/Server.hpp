@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/11 01:26:43 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/11 15:15:01 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,11 +29,12 @@ class	Server {
 		void	run();
 		void	NewClient();
 
-		Client*	getFdsClient(int);
-		Channel* getChannel(const std::string &name);
-		bool	isTaken(int, std::string);
-		void	sendErrMess(int &, std::string);
-		std::vector<std::string>	splitCom(char *);
+		Client*						getFdsClient(int);
+		Channel*					getChannel(const std::string &name);
+		bool						isTaken(int, std::string);
+		void						sendErrMess(int &, std::string);
+		std::vector<std::string>	splitCom(const char *);
+		void						receiveData(int);
 
 	private :
 		int							_port;

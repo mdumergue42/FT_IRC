@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:24:36 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:09:22 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/11 15:25:05 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,8 @@ Client::Client( int fds ) :
 	_isOperator(false),
 	_isAuth(false),
 	_username(""),
-	_nickname("") {}
+	_nickname(""),
+	_buf("") {}
 
 Client::Client( Client const & copy ) {*this = copy;}
 
@@ -48,8 +49,9 @@ void	Client::setAuth( bool auth ) {_isAuth = auth;}
 
 /*Getters*/
 
-int			Client::getFds( void ) const {return _fds;}
-std::string	Client::getUsername( void ) const {return _username;}
-std::string	Client::getNickname( void ) const {return _nickname;}
-bool		Client::isAuth( void ) const {return _isAuth;}
-bool		Client::isOp( void ) const {return _isOperator;};
+int				Client::getFds( void ) const {return _fds;}
+std::string		Client::getUsername( void ) const {return _username;}
+std::string		Client::getNickname( void ) const {return _nickname;}
+std::string&	Client::getBuffer( void ) {return _buf;}
+bool			Client::isAuth( void ) const {return _isAuth;}
+bool			Client::isOp( void ) const {return _isOperator;};

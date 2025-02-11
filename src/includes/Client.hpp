@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:25:44 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 20:08:38 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/11 15:25:14 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,11 +24,12 @@ class	Client {
 		Client &	operator=(Client const &);
 
 		/*Getters _ Setters*/
-		int			getFds(void) const;
-		std::string	getUsername(void) const;
-		std::string	getNickname(void) const;
-		bool	isOp(void) const;
-		bool	isAuth(void) const;
+		int				getFds(void) const;
+		std::string		getUsername(void) const;
+		std::string		getNickname(void) const;
+		std::string&	getBuffer(void);
+		bool			isOp(void) const;
+		bool			isAuth(void) const;
 
 		void	setUsername(std::string);
 		void	setNickname(std::string);
@@ -42,6 +43,7 @@ class	Client {
 
 		std::string	_username;
 		std::string	_nickname;
+		std::string	_buf;
 		
 };
 

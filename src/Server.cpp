@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/11 02:34:27 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/11 17:11:20 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,7 @@ Channel* Server::getChannel(const std::string &channelName) {
         if (_channels[i]->getName() == channelName)
             return _channels[i];
     }
-    return nullptr;
+    return NULL;
 }
 
 bool	Server::isTaken( int code, std::string name ) {
@@ -76,12 +76,13 @@ void	Server::sendErrMess(int & fds, std::string message ) {
 	std::cout << message << std::endl;
 }
 
-std::vector<std::string>	Server::splitCom( char *buffer ) {
+std::vector<std::string>	Server::splitCom( const char *buffer ) {
 	std::vector<std::string>	commands;
 	std::string	tmp = "";
 
+	std::cout << "buf -> " << buffer << std::endl;
 	for (size_t i = 0; buffer[i] != '\0'; i++) {
-		if (buffer[i] == ' ' || buffer[i] == '\n')
+		if (buffer[i] == ' ' || buffer[i] == '\n' || buffer[i] == '\r')
 		{
 			if (!tmp.empty())
 			{
@@ -143,8 +144,9 @@ void Server::run() {
 				NewClient();
 
 			for (size_t i = _pollfds.size() - 1; i > 0; i--) {
-				if (_pollfds[i].revents & POLLIN) {
-					char buffer[1024] = {0};
+				if (_pollfds[i].revents & POLLIN)
+					receiveData(_pollfds[i].fd);
+				/*	char buffer[1024] = {0};
 					ssize_t bytes = recv(_pollfds[i].fd, buffer, sizeof(buffer), 0);
 					if (bytes <= 0)
 					{
@@ -206,9 +208,97 @@ void Server::run() {
 						else
 							std::cout << "Message du client : " << buffer;
 					}
-				}
+				}*/
 			}
 		}
 	}
-	close(_server_fd);
+//:	close(_server_fd);
+}
+
+void Server::receiveData(int fds) {
+    char temp[1024];
+    ssize_t bytes;
+    
+    Client* client = getFdsClient(fds);
+    if (!client) {
+        client = new Client(fds);
+        _clientfds.push_back(client);
+    }
+
+    std::string& buffer = client->getBuffer();
+
+    while ((bytes = recv(fds, temp, sizeof(temp) - 1, 0)) > 0)
+	{
+        temp[bytes] = '\0';
+        buffer += temp;
+
+        size_t pos;
+        while ((pos = buffer.find("\n")) != std::string::npos)
+		{
+            std::string command = buffer.substr(0, pos);
+            buffer.erase(0, pos + 2);
+
+			std::cout << "command -> " << command << std::endl;
+            std::vector<std::string> commands = splitCom(command.c_str());
+            if (commands.empty())
+				continue;
+            std::string com = commands[0];
+
+			std::cout << "com 0 -> " << com << " com 1 -> " << commands[1] << std::endl;
+            if (com == "NICK" && commands.size() > 1)
+			{
+				std::cout << "inside NICK\n";
+                if (isTaken(1, commands[1]))
+                    sendErrMess(fds, "Nickname is already used");
+                else
+				{
+                    client->setNickname(commands[1]);
+                    sendErrMess(fds, "Nickname accepted");
+                }
+            }
+            else if (com == "USER" && commands.size() > 1)
+			{
+                if (client->getNickname().empty())
+				{
+                    sendErrMess(fds, "You must first define a nickname. Ex: NICK yourname");
+                    continue;
+                }
+                if (isTaken(0, commands[1]))
+                    sendErrMess(fds, "Username is already used");
+                else
+				{
+                    client->setUsername(commands[1]);
+                    client->setAuth(true);
+                    sendErrMess(fds, "Username accepted");
+                }
+            }
+            else if (com == "JOIN" && commands.size() > 1)
+			{
+                if (!client->isAuth())
+				{
+                    sendErrMess(fds, "You are not authenticated");
+                    continue;
+                }
+                std::string channelName = commands[1];
+                Channel* channel = getChannel(channelName);
+                if (!channel)
+				{
+                    channel = new Channel(channelName);
+                    _channels.push_back(channel);
+                }
+                channel->addClient(client);
+                sendErrMess(fds, "Joined channel " + channelName);
+            }
+            else
+			{
+                std::cout << "Message from client: " << command << std::endl;
+            }
+        }
+    }
+/*	if (bytes <= 0)
+	{
+		std::cout << "\033[33mClient disconnected : " << fds << "\033[0m" << std::endl;
+		close(fds);
+		_pollfds.erase(_pollfds.begin());
+	}*/
 }

@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/10 02:16:18 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/11 00:05:44 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 #include <poll.h>
 #include <vector>
 #include <exception>
+#include <stdexcept>
 
 
 #endif

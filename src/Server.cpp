@@ -6,12 +6,11 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/10 23:17:05 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/11 02:34:27 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
-#include <stdexcept>
 
 Server::Server( void ) {}
 
@@ -37,6 +36,13 @@ Client *	Server::getFdsClient( int fds ) {
 	return NULL;
 }
 
+Channel* Server::getChannel(const std::string &channelName) {
+    for (size_t i = 0; i < _channels.size(); i++) {
+        if (_channels[i]->getName() == channelName)
+            return _channels[i];
+    }
+    return nullptr;
+}
 
 bool	Server::isTaken( int code, std::string name ) {
 	bool	isTaken = false;
@@ -140,7 +146,6 @@ void Server::run() {
 				if (_pollfds[i].revents & POLLIN) {
 					char buffer[1024] = {0};
 					ssize_t bytes = recv(_pollfds[i].fd, buffer, sizeof(buffer), 0);
-					std::cout << bytes << std::endl;
 					if (bytes <= 0)
 					{
 						std::cout << "\033[33mClient disconnected : " << _pollfds[i].fd << "\033[0m" << std::endl;
@@ -149,7 +154,6 @@ void Server::run() {
 					}
 					else
 					{
-						std::cout << "Message du client : " << buffer;
 						Client *client = getFdsClient(_pollfds[i].fd); //verifier si il existe pas deja
 						if (!client)
 						{
@@ -172,7 +176,6 @@ void Server::run() {
 						}
 						else if (com == "USER" && commands.size() > 1)
 						{
-							std::cout << "inside USER\n";
 							if (client->getNickname().empty())
 								this->sendErrMess(_pollfds[i].fd, "You must first define a nickname. Ex : NICK yourname");
 							bool	isTaken = this->isTaken(0, commands[1]);
@@ -185,14 +188,23 @@ void Server::run() {
 								this->sendErrMess(_pollfds[i].fd, "Username accepted");
 							}
 						}
-						else if (com == "JOIN")
+						else if (com == "JOIN" && commands.size() > 1)
 						{
-							if (!client->isAuth())
+							if (!client->isAuth()) {
 								this->sendErrMess(_pollfds[i].fd, "You are not authenticated");
-							//chiant a venir
+								continue;
+							}
+							std::string channelName = commands[1];
+							Channel *channel = getChannel(channelName);
+							if (!channel) {
+								channel = new Channel(channelName);
+								_channels.push_back(channel);
+							}
+							channel->addClient(client);
+							this->sendErrMess(_pollfds[i].fd, "Joined channel " + channelName);
 						}
 						else
-							std::cout << "tamere irc\n";
+							std::cout << "Message du client : " << buffer;
 					}
 				}
 			}

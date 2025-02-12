@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/12 04:06:34 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/12 16:06:17 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,8 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["PASS"] = &Server::handlePass;
 	_commandMap["NICK"] = &Server::handleNick;
 	_commandMap["USER"] = &Server::handleUser;
-    //_commandMap["JOIN"] = &Server::handleJoin;
+    _commandMap["JOIN"] = &Server::handleJoin;
+	_commandMap["KICK"] = &Server::handleKick;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -30,6 +31,9 @@ Server &	Server::operator=( Server const & op ) {
 		return *this;
 	return *this;
 }
+
+
+////////////// Get ////////////////
 
 Client *	Server::getFdsClient( int fds ) {
 	for (size_t i = 0; i < _clientfds.size(); i++) {
@@ -46,6 +50,19 @@ Channel* Server::getChannel(const std::string &channelName) {
     }
     return NULL;
 }
+
+Client*	Server::getClientByNickname(int fd, std::string name) {
+	std::map<Client *, std::string>::iterator it;
+	for (it = _clientByN.begin() ; it != _clientByN.end(); it++) {
+		std::cout << "it s-> " << it->second << "| name -> " << name << std::endl;
+		if (it->second == name && fd != it->first->getFds())
+			return it->first;
+	}
+	return NULL;
+}
+
+
+///////////// Utils ///////////////
 
 bool	Server::isTaken( int code, std::string name ) {
 	bool	isTaken = false;
@@ -74,16 +91,16 @@ bool	Server::isTaken( int code, std::string name ) {
 }
 
 void	Server::sendErrMess(int & fds, std::string message ) {
+	message += "\n";
 	const char *mess = message.c_str();
 	send(fds, mess, strlen(mess), 0);
-	std::cout << message << std::endl;
+	std::cout << message;
 }
 
 std::vector<std::string> Server::splitCom(const std::string &input) {
     std::vector<std::string> commands;
     std::string tmp = "";
 
-    std::cout << "buf -> " << input << std::endl;
     for (size_t i = 0; i < input.size(); i++) {
         if (input[i] == ' ' || input[i] == '\n' || input[i] == '\r') {
             if (!tmp.empty()) {
@@ -99,6 +116,9 @@ std::vector<std::string> Server::splitCom(const std::string &input) {
         commands.push_back(tmp);
     return commands;
 }
+
+
+//////////// Exec //////////////
 
 void Server::initserv() {
 	this->_server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -126,48 +146,56 @@ void Server::initserv() {
 	_pollfds.push_back(server_pollfd);
 }
 
-void Server::NewClient() {
-	struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int client_socket = accept(_pollfds[0].fd, (struct sockaddr*)&client_addr, &client_len);
-    if (client_socket < 0)
-		throw std::runtime_error("Client connection failed");
-
-	std::cout << "\033[32mNouveau client connecté : " << client_socket << "\033[0m" << std::endl;
-        
-    struct pollfd client_pollfd;
-	client_pollfd.fd = client_socket;
-	client_pollfd.events = POLLIN | POLLOUT;
-    _pollfds.push_back(client_pollfd);
-}
-
 void Server::processCommand(Client* client, int fd, const std::string &command) {
     std::vector<std::string> tokens = splitCom(command);
     if (tokens.empty() || tokens[0].empty())
         return;
     std::string com = tokens[0];
-	if (!client->isAuth())
-	{
-		if (command != "CAP LS 302\r" && com != "PASS") {
-			sendErrMess(fd, "You are not authenticated");
-			return;
-		}
-	} else if (client->getNickname().empty()) {
-		if (com != "NICK" && com != "USER") {
-			sendErrMess(fd, "You must first define a nickname or a username");
-			return;
-		}
-	}
-	if (command != "CAP LS 302\r") {
-		std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
-		if (it != _commandMap.end()) {
-			CommandFunc func = it->second;
-			(this->*func)(client, fd, tokens);
-		} else {
-			sendErrMess(fd, "Unknown command: " + com);
-		}
-	}
-} 
+    if (command == "DATA") {
+        std::cout << "\033[36m=== Données des Clients sur le serveur ===\033[0m" << std::endl;
+        for (size_t i = 0; i < _clientfds.size(); i++) {
+            Client* client = _clientfds[i];
+            std::cout << "Client FD: " << client->getFds() << std::endl;
+            std::cout << "Nickname: " << client->getNickname() << std::endl;
+            std::cout << "Username: " << client->getUsername() << std::endl;
+            std::cout << "Authenticated: " << (client->isAuth() ? "Yes" : "No") << std::endl;
+            std::cout << "Buffer: " << client->getBuffer() << std::endl;
+			std::cout << "Channels: ";
+            bool inChannel = false;
+          /*  for (size_t j = 0; j < _channels.size(); j++) {
+                if (_channels[j]->hasClient(client)) {  // Vérifier si le client est dans ce channel
+                    std::cout << _channels[j]->getName() << " ";
+                    inChannel = true;
+                }
+            }*/
+            if (!inChannel)
+                std::cout << "None";
+            std::cout << "-------------------------------------" << std::endl;
+        }
+        return;
+    }
+    if (!client->isAuth())
+    {
+        if (command != "CAP LS 302\r" && com != "PASS") {
+            sendErrMess(fd, "You are not authenticated");
+            return;
+        }
+    } else if (client->getNickname().empty()) {
+        if (com != "NICK" && com != "USER") {
+            sendErrMess(fd, "You must first define a nickname or a username");
+            return;
+        }
+    }
+    if (command != "CAP LS 302\r") {
+        std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
+        if (it != _commandMap.end()) {
+            CommandFunc func = it->second;
+            (this->*func)(client, fd, tokens);
+        } else {
+            sendErrMess(fd, "Unknown command: " + com);
+        }
+    }
+}
 
 void Server::run() {
 	while (1)
@@ -188,32 +216,30 @@ void Server::run() {
 						_clientfds.push_back(client);
 					}
 					std::string &buffer = client->getBuffer();
-					while (1) {
-						bytes = recv(_pollfds[i].fd, temp, sizeof(temp) - 1, 0);
-						if (bytes > 0) {
-							temp[bytes]= '\0';
-							buffer += temp;
+					bytes = recv(_pollfds[i].fd, temp, sizeof(temp) - 1, 0);
+					if (bytes > 0) {
+						temp[bytes]= '\0';
+						buffer += temp;
 
-							size_t pos;
-							while ((pos = buffer.find("\r\n")) != std::string::npos) {
-								std::string command = buffer.substr(0, pos);
-								buffer.erase(0, pos + 2);
-								processCommand(client, _pollfds[i].fd, command);
-							}
+						size_t pos;
+						while ((pos = buffer.find("\n")) != std::string::npos) {
+							std::string command = buffer.substr(0, pos);
+							buffer.erase(0, pos + 2);
+							processCommand(client, _pollfds[i].fd, command);
 						}
-						else if (bytes == 0)
-						{
-							removeClient(_pollfds[i].fd);
+					}
+					else if (bytes == 0)
+					{
+						removeClient(_pollfds[i].fd);
+						break;
+					}
+					else
+					{
+						if (errno == EWOULDBLOCK || errno == EAGAIN)
 							break;
-						}
-						else
-						{
-							if (errno == EWOULDBLOCK || errno == EAGAIN)
-								break;
-							else {
-								std::cerr << "Error receiving data on fd " << _pollfds[i].fd << std::endl;
-								break;
-							}
+						else {
+							std::cerr << "Error receiving data on fd " << _pollfds[i].fd << std::endl;
+							break;
 						}
 					}
 				}
@@ -241,50 +267,95 @@ void Server::removeClient(int fd) {
 	std::cout << "\033[33mClient disconnected: " << fd << "\033[0m" << std::endl;
 }
 
+
 ////////////////// COMMANDS ////////////////////////
 
-void Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
+void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (client->isAuth()) {
 		sendErrMess(fd, "You are already authenticated");
-		return;
+		return ;
 	}
 	if (tokens.size() < 2) {
 		sendErrMess(fd, "PASS: Missing parameter");
 	}
 	if (tokens[1] != _password) {
 		sendErrMess(fd, "Password incorrect");
-		return;
+		return ;
 	}
 	client->setAuth(true);
 	sendErrMess(fd, "You was authenticated");
 }
 
-void Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
+void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2) {
         sendErrMess(fd, "NICK: Missing parameter");
-        return;
+        return ;
     }
-    if (isTaken(1, tokens[1])) {
+    if (isTaken(1, tokens[1]))
         sendErrMess(fd, "Nickname is already used");
-    } else {
+    else {
         client->setNickname(tokens[1]);
+		_clientByN[client] = client->getNickname();
         sendErrMess(fd, "Nickname accepted");
     }
 }
 
-void Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
-    if (client->getNickname().empty()) {
-        sendErrMess(fd, "Define a nickname first using NICK");
-        return;
+void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
+	if (client->getNickname().empty()) {
+        sendErrMess(fd, "Define a nickname first using NICK.");
+        return ;
     }
     if (tokens.size() < 2) {
-        sendErrMess(fd, "USER: Missing parameter");
-        return;
-    }
-    if (isTaken(0, tokens[1])) {
-        sendErrMess(fd, "Username is already used");
-    } else {
+        sendErrMess(fd, "USER: Missing parameter.");
+        return; }
+    if (isTaken(0, tokens[1]))
+        sendErrMess(fd, "Username is already used.");
+    else {
         client->setUsername(tokens[1]);
-        sendErrMess(fd, "User accepted and authenticated");
+		client->setAuth(true);
+        sendErrMess(fd, "User accepted and authenticated.");
     }
 }
+
+void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>& tokens) {
+	if (tokens.size() < 2) {
+		sendErrMess(fd, "JOIN: Missing parameter.");
+		return; }
+	if (!client->isAuth()) {
+		sendErrMess(fd, "You are not authenticated");
+		return; }
+	Channel* channel = getChannel(tokens[1]);
+	if (!channel)
+	{
+		channel = new Channel(tokens[1]);
+		client->setOp(true);
+		
+		_channels.push_back(channel);
+		_clientByN[client] = "";
+	}
+	channel->addClient(client);
+	sendErrMess(fd, "Joined channel " + tokens[1]);
+}
+
+
+void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& tokens) {
+	if (!client->isAuth()) {
+		sendErrMess(fd, "You are not authenticated.");
+		return; }
+	if (!client->isOp()) {
+		sendErrMess(fd, "You are not operator.");
+		return; }
+	if (tokens.size() < 2) {
+		sendErrMess(fd, "KICK: Missing parameter.");
+		return; }
+	Client *target = getClientByNickname(fd, tokens[1]);
+	if (target == NULL) {
+		sendErrMess(fd, "The user you want to eject does not exist or you can't kill yourself");
+		return; }
+	Channel	*channel = NULL;
+	channel->removeClient(target);
+}
+
+/*void	Server::handleInvite(Client *client, int fd, std::vector<std::string>& tokens) {
+
+}*/

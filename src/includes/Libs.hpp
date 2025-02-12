@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <fcntl.h>
 #include <map>
+#include <errno.h>
 
 #ifdef __linux
 	#define nullptr 0

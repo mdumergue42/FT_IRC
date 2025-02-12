@@ -10,6 +10,10 @@
 #include <termios.h>
 #include <cstdlib>
 
+#ifdef __linux
+	#define nullptr 0
+#endif
+
 // Structure pour sauvegarder les réglages originaux du terminal
 struct TerminalSettings {
     struct termios original;
@@ -109,7 +113,7 @@ int main(int argc, char **argv) {
                     // On ne rajoute pas de nouvelle ligne prompt ici ; on attend qu'une nouvelle entrée ou une réponse du serveur l'affiche.
                 } else if (c == 127 || c == '\b') { // Gestion du backspace
                     if (!inputBuffer.empty()) {
-                        inputBuffer.pop_back();
+						inputBuffer.erase(inputBuffer.end() - 1);
                         std::cout << "\033[2K\r" << "\033[36mClient:: \033[0m" << inputBuffer << std::flush;
                     }
                 } else {
@@ -130,7 +134,7 @@ int main(int argc, char **argv) {
                 break;
             } else {
                 buffer[recvBytes] = '\0';
-                std::cout << "\n\033[35mServeur:: \033[0m" << buffer << std::endl;
+                std::cout << "\n\033[35mServeur:: \033[0m" << buffer;
             }
             // Réaffiche le prompt et la saisie en cours (qui devrait être vide ici)
             std::cout << "\033[36mClient:: \033[0m" << inputBuffer << std::flush;

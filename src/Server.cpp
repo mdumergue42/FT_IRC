@@ -6,17 +6,20 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/12 03:13:14 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/12 04:06:34 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
 
-Server::Server( void ) {}
-
 Server::Server(std::string port, std::string password) :
 	_port(std::atoi(port.c_str())),
-	_password(password) {}
+	_password(password) {
+	_commandMap["PASS"] = &Server::handlePass;
+	_commandMap["NICK"] = &Server::handleNick;
+	_commandMap["USER"] = &Server::handleUser;
+    //_commandMap["JOIN"] = &Server::handleJoin;
+}
 
 Server::Server( Server const & copy ) {*this = copy;}
 
@@ -76,7 +79,6 @@ void	Server::sendErrMess(int & fds, std::string message ) {
 	std::cout << message << std::endl;
 }
 
-
 std::vector<std::string> Server::splitCom(const std::string &input) {
     std::vector<std::string> commands;
     std::string tmp = "";
@@ -97,7 +99,6 @@ std::vector<std::string> Server::splitCom(const std::string &input) {
         commands.push_back(tmp);
     return commands;
 }
-
 
 void Server::initserv() {
 	this->_server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -158,7 +159,13 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 		}
 	}
 	if (command != "CAP LS 302\r") {
-		//exec command
+		std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
+		if (it != _commandMap.end()) {
+			CommandFunc func = it->second;
+			(this->*func)(client, fd, tokens);
+		} else {
+			sendErrMess(fd, "Unknown command: " + com);
+		}
 	}
 } 
 
@@ -216,7 +223,6 @@ void Server::run() {
 	close(_server_fd);
 }
 
-
 void Server::removeClient(int fd) {
     for (std::vector<pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it) {
         if (it->fd == fd) {
@@ -233,4 +239,52 @@ void Server::removeClient(int fd) {
     }
 	close(fd);
 	std::cout << "\033[33mClient disconnected: " << fd << "\033[0m" << std::endl;
+}
+
+////////////////// COMMANDS ////////////////////////
+
+void Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
+	if (client->isAuth()) {
+		sendErrMess(fd, "You are already authenticated");
+		return;
+	}
+	if (tokens.size() < 2) {
+		sendErrMess(fd, "PASS: Missing parameter");
+	}
+	if (tokens[1] != _password) {
+		sendErrMess(fd, "Password incorrect");
+		return;
+	}
+	client->setAuth(true);
+	sendErrMess(fd, "You was authenticated");
+}
+
+void Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
+	if (tokens.size() < 2) {
+        sendErrMess(fd, "NICK: Missing parameter");
+        return;
+    }
+    if (isTaken(1, tokens[1])) {
+        sendErrMess(fd, "Nickname is already used");
+    } else {
+        client->setNickname(tokens[1]);
+        sendErrMess(fd, "Nickname accepted");
+    }
+}
+
+void Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
+    if (client->getNickname().empty()) {
+        sendErrMess(fd, "Define a nickname first using NICK");
+        return;
+    }
+    if (tokens.size() < 2) {
+        sendErrMess(fd, "USER: Missing parameter");
+        return;
+    }
+    if (isTaken(0, tokens[1])) {
+        sendErrMess(fd, "Username is already used");
+    } else {
+        client->setUsername(tokens[1]);
+        sendErrMess(fd, "User accepted and authenticated");
+    }
 }

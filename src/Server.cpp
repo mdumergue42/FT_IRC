@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/12 16:06:17 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/12 16:09:52 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -144,6 +144,21 @@ void Server::initserv() {
 	server_pollfd.fd = this->_server_fd;
 	server_pollfd.events = POLLIN;
 	_pollfds.push_back(server_pollfd);
+}
+
+void Server::NewClient() {
+	struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_socket = accept(_pollfds[0].fd, (struct sockaddr*)&client_addr, &client_len);
+    if (client_socket < 0)
+		throw std::runtime_error("Client connection failed");
+
+	std::cout << "\033[32mNouveau client connectÃ© : " << client_socket << "\033[0m" << std::endl;
+        
+    struct pollfd client_pollfd;
+	client_pollfd.fd = client_socket;
+	client_pollfd.events = POLLIN | POLLOUT;
+    _pollfds.push_back(client_pollfd);
 }
 
 void Server::processCommand(Client* client, int fd, const std::string &command) {

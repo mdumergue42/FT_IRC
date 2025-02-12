@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/11 15:15:01 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/12 03:08:31 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,8 +33,9 @@ class	Server {
 		Channel*					getChannel(const std::string &name);
 		bool						isTaken(int, std::string);
 		void						sendErrMess(int &, std::string);
-		std::vector<std::string>	splitCom(const char *);
-		void						receiveData(int);
+		std::vector<std::string>	splitCom(const std::string &input);
+		void						processCommand(Client* client, int fd, const std::string &command);
+		void						removeClient(int fd);
 
 	private :
 		int							_port;

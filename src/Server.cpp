@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/11 17:11:20 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/12 03:13:14 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,31 +76,37 @@ void	Server::sendErrMess(int & fds, std::string message ) {
 	std::cout << message << std::endl;
 }
 
-std::vector<std::string>	Server::splitCom( const char *buffer ) {
-	std::vector<std::string>	commands;
-	std::string	tmp = "";
 
-	std::cout << "buf -> " << buffer << std::endl;
-	for (size_t i = 0; buffer[i] != '\0'; i++) {
-		if (buffer[i] == ' ' || buffer[i] == '\n' || buffer[i] == '\r')
-		{
-			if (!tmp.empty())
-			{
-				commands.push_back(tmp);
-				tmp = "";
-			}
-		}
-		else
-			tmp += buffer[i];
-	}
-	return commands;
+std::vector<std::string> Server::splitCom(const std::string &input) {
+    std::vector<std::string> commands;
+    std::string tmp = "";
+
+    std::cout << "buf -> " << input << std::endl;
+    for (size_t i = 0; i < input.size(); i++) {
+        if (input[i] == ' ' || input[i] == '\n' || input[i] == '\r') {
+            if (!tmp.empty()) {
+                commands.push_back(tmp);
+                tmp = "";
+            }
+        }
+        else {
+            tmp += input[i];
+        }
+    }
+    if (!tmp.empty())
+        commands.push_back(tmp);
+    return commands;
 }
+
 
 void Server::initserv() {
 	this->_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (this->_server_fd == -1)
 		throw	std::runtime_error("Server socket creation failed");
 	sockaddr_in	adServ;
+	
+	int flags = fcntl(_server_fd, F_GETFL, 0);
+	fcntl(_server_fd, F_SETFL, flags | O_NONBLOCK);
 
 	adServ.sin_family = AF_INET;
 	adServ.sin_port = htons(this->_port);
@@ -134,6 +140,28 @@ void Server::NewClient() {
     _pollfds.push_back(client_pollfd);
 }
 
+void Server::processCommand(Client* client, int fd, const std::string &command) {
+    std::vector<std::string> tokens = splitCom(command);
+    if (tokens.empty() || tokens[0].empty())
+        return;
+    std::string com = tokens[0];
+	if (!client->isAuth())
+	{
+		if (command != "CAP LS 302\r" && com != "PASS") {
+			sendErrMess(fd, "You are not authenticated");
+			return;
+		}
+	} else if (client->getNickname().empty()) {
+		if (com != "NICK" && com != "USER") {
+			sendErrMess(fd, "You must first define a nickname or a username");
+			return;
+		}
+	}
+	if (command != "CAP LS 302\r") {
+		//exec command
+	}
+} 
+
 void Server::run() {
 	while (1)
 	{
@@ -144,161 +172,65 @@ void Server::run() {
 				NewClient();
 
 			for (size_t i = _pollfds.size() - 1; i > 0; i--) {
-				if (_pollfds[i].revents & POLLIN)
-					receiveData(_pollfds[i].fd);
-				/*	char buffer[1024] = {0};
-					ssize_t bytes = recv(_pollfds[i].fd, buffer, sizeof(buffer), 0);
-					if (bytes <= 0)
-					{
-						std::cout << "\033[33mClient disconnected : " << _pollfds[i].fd << "\033[0m" << std::endl;
-						close(_pollfds[i].fd);
-			            _pollfds.erase(_pollfds.begin() + i);
+				if (_pollfds[i].revents & POLLIN) {
+					char temp[1024];
+					ssize_t bytes;
+					Client* client = getFdsClient(_pollfds[i].fd);
+					if (!client) {
+						client = new Client(_pollfds[i].fd);
+						_clientfds.push_back(client);
 					}
-					else
-					{
-						Client *client = getFdsClient(_pollfds[i].fd); //verifier si il existe pas deja
-						if (!client)
-						{
-							client = new Client(_pollfds[i].fd);
-							_clientfds.push_back(client);
-						}
+					std::string &buffer = client->getBuffer();
+					while (1) {
+						bytes = recv(_pollfds[i].fd, temp, sizeof(temp) - 1, 0);
+						if (bytes > 0) {
+							temp[bytes]= '\0';
+							buffer += temp;
 
-						std::vector<std::string> commands = this->splitCom(buffer); //pour recup par ex NICK clientyoupi
-						std::string	com = commands[0];
-						if (com == "NICK" && commands.size() > 1)
-						{
-							bool	isTaken = this->isTaken(1, commands[1]);
-							if (isTaken)
-								this->sendErrMess(_pollfds[i].fd, "Nickname is already used");
-							else
-							{
-								client->setNickname(commands[1]);
-								this->sendErrMess(_pollfds[i].fd, "Nickname accepted");
+							size_t pos;
+							while ((pos = buffer.find("\r\n")) != std::string::npos) {
+								std::string command = buffer.substr(0, pos);
+								buffer.erase(0, pos + 2);
+								processCommand(client, _pollfds[i].fd, command);
 							}
 						}
-						else if (com == "USER" && commands.size() > 1)
+						else if (bytes == 0)
 						{
-							if (client->getNickname().empty())
-								this->sendErrMess(_pollfds[i].fd, "You must first define a nickname. Ex : NICK yourname");
-							bool	isTaken = this->isTaken(0, commands[1]);
-							if (isTaken)
-								this->sendErrMess(_pollfds[i].fd, "Username is already used");
-							else
-							{
-								client->setUsername(commands[1]);
-								client->setAuth(true);
-								this->sendErrMess(_pollfds[i].fd, "Username accepted");
-							}
-						}
-						else if (com == "JOIN" && commands.size() > 1)
-						{
-							if (!client->isAuth()) {
-								this->sendErrMess(_pollfds[i].fd, "You are not authenticated");
-								continue;
-							}
-							std::string channelName = commands[1];
-							Channel *channel = getChannel(channelName);
-							if (!channel) {
-								channel = new Channel(channelName);
-								_channels.push_back(channel);
-							}
-							channel->addClient(client);
-							this->sendErrMess(_pollfds[i].fd, "Joined channel " + channelName);
+							removeClient(_pollfds[i].fd);
+							break;
 						}
 						else
-							std::cout << "Message du client : " << buffer;
+						{
+							if (errno == EWOULDBLOCK || errno == EAGAIN)
+								break;
+							else {
+								std::cerr << "Error receiving data on fd " << _pollfds[i].fd << std::endl;
+								break;
+							}
+						}
 					}
-				}*/
+				}
 			}
 		}
 	}
-//:	close(_server_fd);
+	close(_server_fd);
 }
 
-void Server::receiveData(int fds) {
-    char temp[1024];
-    ssize_t bytes;
-    
-    Client* client = getFdsClient(fds);
-    if (!client) {
-        client = new Client(fds);
-        _clientfds.push_back(client);
-    }
 
-    std::string& buffer = client->getBuffer();
-
-    while ((bytes = recv(fds, temp, sizeof(temp) - 1, 0)) > 0)
-	{
-        temp[bytes] = '\0';
-        buffer += temp;
-
-        size_t pos;
-        while ((pos = buffer.find("\n")) != std::string::npos)
-		{
-            std::string command = buffer.substr(0, pos);
-            buffer.erase(0, pos + 2);
-
-			std::cout << "command -> " << command << std::endl;
-            std::vector<std::string> commands = splitCom(command.c_str());
-            if (commands.empty())
-				continue;
-            std::string com = commands[0];
-
-			std::cout << "com 0 -> " << com << " com 1 -> " << commands[1] << std::endl;
-            if (com == "NICK" && commands.size() > 1)
-			{
-				std::cout << "inside NICK\n";
-                if (isTaken(1, commands[1]))
-                    sendErrMess(fds, "Nickname is already used");
-                else
-				{
-                    client->setNickname(commands[1]);
-                    sendErrMess(fds, "Nickname accepted");
-                }
-            }
-            else if (com == "USER" && commands.size() > 1)
-			{
-                if (client->getNickname().empty())
-				{
-                    sendErrMess(fds, "You must first define a nickname. Ex: NICK yourname");
-                    continue;
-                }
-                if (isTaken(0, commands[1]))
-                    sendErrMess(fds, "Username is already used");
-                else
-				{
-                    client->setUsername(commands[1]);
-                    client->setAuth(true);
-                    sendErrMess(fds, "Username accepted");
-                }
-            }
-            else if (com == "JOIN" && commands.size() > 1)
-			{
-                if (!client->isAuth())
-				{
-                    sendErrMess(fds, "You are not authenticated");
-                    continue;
-                }
-                std::string channelName = commands[1];
-                Channel* channel = getChannel(channelName);
-                if (!channel)
-				{
-                    channel = new Channel(channelName);
-                    _channels.push_back(channel);
-                }
-                channel->addClient(client);
-                sendErrMess(fds, "Joined channel " + channelName);
-            }
-            else
-			{
-                std::cout << "Message from client: " << command << std::endl;
-            }
+void Server::removeClient(int fd) {
+    for (std::vector<pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it) {
+        if (it->fd == fd) {
+            _pollfds.erase(it);
+            break;
         }
     }
-/*	if (bytes <= 0)
-	{
-		std::cout << "\033[33mClient disconnected : " << fds << "\033[0m" << std::endl;
-		close(fds);
-		_pollfds.erase(_pollfds.begin());
-	}*/
+    for (std::vector<Client*>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
+        if ((*it)->getFds() == fd) {
+            delete *it;
+            _clientfds.erase(it);
+            break;
+        }
+    }
+	close(fd);
+	std::cout << "\033[33mClient disconnected: " << fd << "\033[0m" << std::endl;
 }

@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/11 17:03:48 by basverdi         ###   ########.fr       */
+/*   Updated: 2025/02/12 03:11:35 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include <vector>
 #include <exception>
 #include <stdexcept>
+#include <fcntl.h>
 
 #ifdef __linux
 	#define nullptr 0

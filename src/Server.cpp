@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/12 16:09:52 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/12 16:23:47 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,7 +153,7 @@ void Server::NewClient() {
     if (client_socket < 0)
 		throw std::runtime_error("Client connection failed");
 
-	std::cout << "\033[32mNouveau client connectÃ© : " << client_socket << "\033[0m" << std::endl;
+	std::cout << "\033[32mNouveau client connect : " << client_socket << "\033[0m" << std::endl;
         
     struct pollfd client_pollfd;
 	client_pollfd.fd = client_socket;
@@ -196,8 +196,13 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
             return;
         }
     } else if (client->getNickname().empty()) {
-        if (com != "NICK" && com != "USER") {
-            sendErrMess(fd, "You must first define a nickname or a username");
+        if (com != "NICK") {
+            sendErrMess(fd, "You must first define a nickname");
+            return;
+        }
+    } else if (client->getUsername().empty()) {
+        if (com != "USER") {
+            sendErrMess(fd, "You must first define a username");
             return;
         }
     }
@@ -316,10 +321,6 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 }
 
 void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
-	if (client->getNickname().empty()) {
-        sendErrMess(fd, "Define a nickname first using NICK.");
-        return ;
-    }
     if (tokens.size() < 2) {
         sendErrMess(fd, "USER: Missing parameter.");
         return; }
@@ -327,7 +328,6 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
         sendErrMess(fd, "Username is already used.");
     else {
         client->setUsername(tokens[1]);
-		client->setAuth(true);
         sendErrMess(fd, "User accepted and authenticated.");
     }
 }
@@ -335,9 +335,6 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
 void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2) {
 		sendErrMess(fd, "JOIN: Missing parameter.");
-		return; }
-	if (!client->isAuth()) {
-		sendErrMess(fd, "You are not authenticated");
 		return; }
 	Channel* channel = getChannel(tokens[1]);
 	if (!channel)

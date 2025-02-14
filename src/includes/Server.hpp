@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 10:22:06 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 12:48:32 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,21 +29,31 @@ class	Server {
 		void	run();
 		void	NewClient();
 
+		/// Get ///
+
 		Client*						getFdsClient(int);
 		Client*						getClientByNickname(int, std::string);
 		Channel*					getChannel(const std::string &);
+
+		//// Utils ////
+
 		bool						isTaken(int, std::string);
-		std::string						sendErrMess(int, std::string);
+		std::string					sendErrMess(int, std::string);
 		std::vector<std::string>	splitCom(const std::string &);
 		void						processCommand(Client*, int, const std::string &);
 		void						removeClient(int);
 
-		void						handlePass(Client*, int, const std::vector<std::string>&);
-		void						handleNick(Client*, int, const std::vector<std::string>&);
-		void						handleUser(Client*, int, const std::vector<std::string>&);
-		void						handleJoin(Client*, int, const std::vector<std::string>&);
-		void						handleKick(Client*, int, const std::vector<std::string>&);
-		void						handleInvite(Client*, int, const std::vector<std::string>&);
+		///// Commands /////
+
+		void				handlePass(Client*, int, const std::vector<std::string>&);
+		void				handleNick(Client*, int, const std::vector<std::string>&);
+		void				handleUser(Client*, int, const std::vector<std::string>&);
+		void				handleJoin(Client*, int, const std::vector<std::string>&);
+		void				handleKick(Client*, int, const std::vector<std::string>&);
+		void				handleInvite(Client*, int, const std::vector<std::string>&);
+		void				handleMode(Client*, int, const std::vector<std::string>&);
+		void				handleTopic(Client*, int, const std::vector<std::string>&);
+
 
 	private :
 		int							_port;

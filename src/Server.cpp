@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 12:43:11 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 12:51:37 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@ Server::Server(std::string port, std::string password) :
     _commandMap["JOIN"] = &Server::handleJoin;
 	_commandMap["KICK"] = &Server::handleKick;
 	_commandMap["INVITE"] = &Server::handleInvite;
+	_commandMap["MODE"] = &Server::handleMode;
+	_commandMap["TOPIC"] = &Server::handleTopic;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -374,4 +376,12 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 		throw	sendErrMess(fd, tokens[1] + " is already inside " + tokens[1]);
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]);
+}
+
+void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
+
+}
+
+void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
+
 }

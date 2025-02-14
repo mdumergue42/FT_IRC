@@ -6,13 +6,14 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/12 03:25:48 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/14 12:17:34 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef LIBS_H
 # define LIBS_H
 
+#include "Colors.h"
 #include <string>
 #include <cstdlib>
 #include <iostream>

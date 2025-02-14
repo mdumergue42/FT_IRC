@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/12 13:26:49 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 10:22:06 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,17 +31,17 @@ class	Server {
 
 		Client*						getFdsClient(int);
 		Client*						getClientByNickname(int, std::string);
-		Channel*					getChannel(const std::string &name);
+		Channel*					getChannel(const std::string &);
 		bool						isTaken(int, std::string);
-		void						sendErrMess(int &, std::string);
-		std::vector<std::string>	splitCom(const std::string &input);
-		void						processCommand(Client* client, int fd, const std::string &command);
-		void						removeClient(int fd);
+		std::string						sendErrMess(int, std::string);
+		std::vector<std::string>	splitCom(const std::string &);
+		void						processCommand(Client*, int, const std::string &);
+		void						removeClient(int);
 
-		void						handlePass(Client* client, int fd, const std::vector<std::string>& tokens);
-		void						handleNick(Client* client, int fd, const std::vector<std::string>& tokens);
-		void						handleUser(Client* client, int fd, const std::vector<std::string>& tokens);
-		void						handleJoin(Client* client, int fd, const std::vector<std::string>& tokens);
+		void						handlePass(Client*, int, const std::vector<std::string>&);
+		void						handleNick(Client*, int, const std::vector<std::string>&);
+		void						handleUser(Client*, int, const std::vector<std::string>&);
+		void						handleJoin(Client*, int, const std::vector<std::string>&);
 		void						handleKick(Client*, int, const std::vector<std::string>&);
 		void						handleInvite(Client*, int, const std::vector<std::string>&);
 

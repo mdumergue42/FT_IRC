@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/11 00:54:45 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/14 11:24:20 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,4 +46,12 @@ void Channel::removeClient(Client *client) {
             return;
         }
     }
+}
+
+bool	Channel::hasClient(Client *client) {
+	for (size_t i = 0; i < _clients.size(); i++) {
+		if (_clients[i] == client)
+			return true;
+	}
+	return false;
 }

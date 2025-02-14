@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:42:09 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 12:49:37 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 14:51:30 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,10 @@ class	Channel {
 		Channel & operator=(Channel const &);
 
 		std::string getName() const;
+		std::string	getTopic() const;
+		
+		void		setTopic(std::string);
+		
 		void		addClient(Client *client);
 		void		removeClient(Client *client);
 		bool		hasClient(Client *);

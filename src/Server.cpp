@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 12:51:37 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 15:08:12 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ Server::Server(std::string port, std::string password) :
     _commandMap["JOIN"] = &Server::handleJoin;
 	_commandMap["KICK"] = &Server::handleKick;
 	_commandMap["INVITE"] = &Server::handleInvite;
-	_commandMap["MODE"] = &Server::handleMode;
+//	_commandMap["MODE"] = &Server::handleMode;
 	_commandMap["TOPIC"] = &Server::handleTopic;
 }
 
@@ -344,6 +344,7 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 	}
 	if (channel->hasClient(client))
 		throw	sendErrMess(fd, "You already in " + tokens[1]);
+	//verifier que ca soit pas en mode invite et verifier si besoin d'un mdp
 	channel->addClient(client);
 	sendErrMess(fd, "Joined channel " + tokens[1]);
 }
@@ -374,14 +375,41 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (channel->hasClient(target))
 		throw	sendErrMess(fd, tokens[1] + " is already inside " + tokens[1]);
+	// if (en mode +i)
+	// {
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]);
+	//}
+//	else
+//		throw	sendErrMess(fd, tokens[1] + " is notin invite mode.");
 }
 
-void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
+/*void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
 
-}
+}*/
 
 void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
-
+	if (tokens.size() < 2)
+		throw	sendErrMess(fd, "TOPIC: Missing parameter.");
+	if (tokens.size() == 2)
+	{
+		Channel	*channel = getChannel(tokens[1]);
+		if (!channel)
+			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+		if (!channel->hasClient(client))
+			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+		std::cout << channel->getTopic() << std::endl;
+	}
+	else
+	{
+		Channel	*channel = getChannel(tokens[1]);
+		if (!channel)
+			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+		if (!channel->hasClient(client))
+			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+		//if (en mode +t)
+		//	throw	sendErrMess(fd, "You are not channel operator");
+	//	else
+		channel->setTopic(tokens[2]);
+	}
 }

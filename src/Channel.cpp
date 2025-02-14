@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 11:24:20 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 14:51:16 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,9 +27,10 @@ Channel & Channel::operator=( Channel const & op ) {
 	return *this;
 }
 
-std::string Channel::getName() const {
-	return _name;
-}
+std::string Channel::getName() const {return _name;}
+std::string	Channel::getTopic() const {return _topic;}
+
+void	Channel::setTopic(std::string topic) {_topic = topic;}
 
 void Channel::addClient(Client *client) {
     for (size_t i = 0; i < _clients.size(); i++) {

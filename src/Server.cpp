@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 12:20:33 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 12:43:11 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,6 +96,7 @@ std::string	Server::sendErrMess(int fds, std::string message ) {
 	message += "\n";
 	const char *mess = message.c_str();
 	send(fds, mess, strlen(mess), 0);
+	std::cout << message; // que si on veut afficher dans le serveur
 	return message;
 }
 
@@ -210,7 +211,8 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
             CommandFunc func = it->second;
             (this->*func)(client, fd, tokens);
         } else {
-            sendErrMess(fd, "Unknown command: " + com);
+			std::cout << command << std::endl;
+            //sendErrMess(fd, "Unknown command: " + com);
         }
     }
 	}

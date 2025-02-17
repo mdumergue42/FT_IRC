@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 12:48:32 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/17 20:39:20 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,7 @@ class	Server {
 		std::vector<std::string>	splitCom(const std::string &);
 		void						processCommand(Client*, int, const std::string &);
 		void						removeClient(int);
+		std::vector<std::string>	targetSplit(std::string);
 
 		///// Commands /////
 
@@ -53,7 +54,7 @@ class	Server {
 		void				handleInvite(Client*, int, const std::vector<std::string>&);
 		void				handleMode(Client*, int, const std::vector<std::string>&);
 		void				handleTopic(Client*, int, const std::vector<std::string>&);
-
+		void				handlePrivMsg(Client*, int, const std::vector<std::string>&);
 
 	private :
 		int							_port;

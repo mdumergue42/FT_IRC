@@ -6,12 +6,13 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/17 15:27:06 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/17 21:37:12 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
 #include <csignal>
+#include <cstddef>
 #include <stdexcept>
 #include <sys/socket.h>
 
@@ -26,6 +27,7 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["INVITE"] = &Server::handleInvite;
 	_commandMap["MODE"] = &Server::handleMode;
 	_commandMap["TOPIC"] = &Server::handleTopic;
+	_commandMap["PRIVMSG"] = &Server::handlePrivMsg;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -123,6 +125,20 @@ std::vector<std::string> Server::splitCom(const std::string &input) {
     return commands;
 }
 
+std::vector<std::string>	Server::targetSplit(std::string targets) {
+	std::vector<std::string>	final;
+	size_t	st = 0;
+	size_t	end = targets.find(',');
+
+	while (end != std::string::npos)
+	{
+		final.push_back(targets.substr(st, end - st));
+		st = end + 1;
+		end = targets.find(',', st);
+	}
+	final.push_back(targets.substr(st));
+	return final;
+}
 
 
 //////////// Exec //////////////
@@ -339,8 +355,11 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 	Channel* channel = getChannel(tokens[1]);
 	if (!channel)
 	{
+		if (!channel->channelName(tokens[1]))
+			throw	sendErrMess(fd, "JOIN: bad prototyping. Missing # at beginning of channel name.");
 		channel = new Channel(tokens[1]);
-		channel->setOperator(client, true);
+		channel->setOperator(client, false);
+		client->setOp(true);
 		_channels.push_back(channel);
 	}
 	if (channel->hasClient(client))
@@ -365,22 +384,26 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 	if (!channel->hasClient(target))
 		throw	sendErrMess(fd, "The target customer is not in the channel");
 	channel->removeClient(target);
-	sendErrMess(target->getFds(), "Kick successfull");
+	std::string str = target->getNickname() + " have been kick.";
+	send(client->getFds(), str.c_str(), strlen(str.c_str()), 0);
+	sendErrMess(target->getFds(), "You have been kick of " + channel->getName());
 }
 
 void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>& tokens) {
-	if (tokens.size() < 3)
+	if (tokens.size() < 2)
 		throw	sendErrMess(fd, "INVITE: Missing parameter.");
 	if (!client->isOp())
 		throw	sendErrMess(fd, "You are not operator.");
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
 		throw	sendErrMess(fd, tokens[1] + " doesn't exist");
-	Client *target = getClientByNickname(fd, tokens[2]);
-	if (channel->hasClient(target))
-		throw	sendErrMess(fd, tokens[1] + " is already inside " + tokens[1]);
 	if (!channel->isInviteOnly())
 		throw	sendErrMess(fd, tokens[1] + " is notin invite mode.");
+	Client *target = getClientByNickname(fd, tokens[2]);
+	if (!target)
+		throw	sendErrMess(fd, "User doesn't exist.");
+	if (channel->hasClient(target))
+		throw	sendErrMess(fd, tokens[2] + " is already inside " + tokens[1]);
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]); 
 }
@@ -422,7 +445,7 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 		throw	sendErrMess(fd, tokens[1] + " doesn't exist");
 	if (!channel->hasClient(client))
 		throw	sendErrMess(fd, "You are not part of " + tokens[1]);
-	if (client->isOp())
+	if (!client->isOp())
 		throw	sendErrMess(fd, "You are not channel operator");
 	
 	std::string modeStr = tokens[2];
@@ -487,4 +510,37 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 		}
 	}
 	
+}
+
+void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string>& tokens) {
+	if (tokens.size() < 2)
+		throw	sendErrMess(fd, "PRIVMSG: Missing parameter");
+	if (tokens.size() < 3)
+		throw	sendErrMess(fd, "PRIVMSG: Missing parameter");
+	std::string	fullMessage = "";
+	std::vector<std::string> targets = targetSplit(tokens[1]);
+
+	for (size_t i = 2; i < tokens.size(); i++) {
+		if (i == tokens.size() - 1)
+			fullMessage += tokens[i];
+		else
+			fullMessage += tokens[i] + " ";
+	}
+	fullMessage += '\n';
+	for	(std::vector<std::string>::iterator it = targets.begin(); it != targets.end(); it++) {
+		std::string target = *it;
+		Client *tmp = getClientByNickname(client->getFds(), *it);
+		if (target[0] == '#')
+		{
+			Channel *channel = getChannel(*it);
+			if (!channel)
+				throw	sendErrMess(fd, *it + " doesn't exist");
+			if (!channel->hasClient(client))
+				throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+			else
+				channel->sendChannelMessage(client, fullMessage);
+		}
+		else
+			send(tmp->getFds(), fullMessage.c_str(), strlen(fullMessage.c_str()), 0);
+	}
 }

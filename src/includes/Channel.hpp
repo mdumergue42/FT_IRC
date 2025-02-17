@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:42:09 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 19:14:55 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/17 20:36:35 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,8 @@ class	Channel {
 		void		removeClient(Client *client);
 		bool		hasClient(Client *);
 
+		bool		channelName(std::string);
+		void		sendChannelMessage(Client*, std::string);
 
 	private:
 		std::string _name;

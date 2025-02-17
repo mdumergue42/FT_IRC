@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/14 12:17:34 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/17 20:32:49 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <map>
 #include <errno.h>
+#include <algorithm>
 
 #ifdef __linux
 	#define nullptr 0

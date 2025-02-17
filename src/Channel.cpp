@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 19:32:46 by bastienverdie    ###   ########.fr       */
+/*   Updated: 2025/02/17 21:17:11 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,4 +75,17 @@ bool	Channel::hasClient(Client *client) {
 			return true;
 	}
 	return false;
+}
+
+bool	Channel::channelName(std::string channelName) {
+	if (!channelName.empty() && channelName.size() > 1 && channelName[0] == '#')
+		return true;
+	return false;
+}
+
+void	Channel::sendChannelMessage(Client *client, std::string message) {
+	for (size_t i = 0; i < _clients.size(); i++) {
+		if (_clients[i] != client)
+			send(_clients[i]->getFds(), message.c_str(), strlen(message.c_str()), 0);
+	}
 }

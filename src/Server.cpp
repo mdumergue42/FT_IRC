@@ -6,13 +6,14 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 15:08:12 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/17 15:27:06 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
 #include <csignal>
 #include <stdexcept>
+#include <sys/socket.h>
 
 Server::Server(std::string port, std::string password) :
 	_port(std::atoi(port.c_str())),
@@ -23,7 +24,7 @@ Server::Server(std::string port, std::string password) :
     _commandMap["JOIN"] = &Server::handleJoin;
 	_commandMap["KICK"] = &Server::handleKick;
 	_commandMap["INVITE"] = &Server::handleInvite;
-//	_commandMap["MODE"] = &Server::handleMode;
+	_commandMap["MODE"] = &Server::handleMode;
 	_commandMap["TOPIC"] = &Server::handleTopic;
 }
 
@@ -339,12 +340,15 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 	if (!channel)
 	{
 		channel = new Channel(tokens[1]);
-		client->setOp(true);
+		channel->setOperator(client, true);
 		_channels.push_back(channel);
 	}
 	if (channel->hasClient(client))
 		throw	sendErrMess(fd, "You already in " + tokens[1]);
-	//verifier que ca soit pas en mode invite et verifier si besoin d'un mdp
+	if (!channel->getKey().empty())
+		throw	sendErrMess(fd, "You need a secret key to access to " + tokens[1]);
+	if (channel->isInviteOnly()) //verifier si il est inviter
+		throw	sendErrMess(fd, "You was not invited");
 	channel->addClient(client);
 	sendErrMess(fd, "Joined channel " + tokens[1]);
 }
@@ -375,18 +379,11 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (channel->hasClient(target))
 		throw	sendErrMess(fd, tokens[1] + " is already inside " + tokens[1]);
-	// if (en mode +i)
-	// {
+	if (!channel->isInviteOnly())
+		throw	sendErrMess(fd, tokens[1] + " is notin invite mode.");
 	channel->addClient(target);
-	sendErrMess(target->getFds(), "Joined channel " + tokens[1]);
-	//}
-//	else
-//		throw	sendErrMess(fd, tokens[1] + " is notin invite mode.");
+	sendErrMess(target->getFds(), "Joined channel " + tokens[1]); 
 }
-
-/*void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
-
-}*/
 
 void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
@@ -398,7 +395,7 @@ void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>&
 			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
 		if (!channel->hasClient(client))
 			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
-		std::cout << channel->getTopic() << std::endl;
+		throw	sendErrMess(fd, channel->getTopic());
 	}
 	else
 	{
@@ -407,9 +404,87 @@ void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>&
 			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
 		if (!channel->hasClient(client))
 			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
-		//if (en mode +t)
-		//	throw	sendErrMess(fd, "You are not channel operator");
-	//	else
-		channel->setTopic(tokens[2]);
+		if (client->isOp())
+			throw	sendErrMess(fd, "You are not channel operator");
+		else
+			channel->setTopic(tokens[2]);
+		throw	sendErrMess(fd, "Topic change : " + tokens[3]);
 	}
+}
+
+void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
+	if (tokens.size() < 3)
+		throw	sendErrMess(fd, "MODE: Missing parameter.");
+
+	std::string channelName = tokens[1];
+	Channel *channel = getChannel(channelName);
+	if (!channel)
+		throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+	if (!channel->hasClient(client))
+		throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+	if (client->isOp())
+		throw	sendErrMess(fd, "You are not channel operator");
+	
+	std::string modeStr = tokens[2];
+	bool add = true;
+	int paramIndex = 3;
+
+	for (size_t i = 0; i < modeStr.size(); i++) {
+		char c = modeStr[i];
+		if (c == '+')
+			add = true;
+		else if (c == '-')
+			add = false;
+		else {
+			switch(c) {
+				case 'i':
+					channel->setInviteOnly(add);
+					break;
+				case 't':
+					channel->setTopicRestricted(add);
+					break;
+				case 'k':
+					if (add) {
+                        if (tokens.size() <= (size_t)paramIndex) {
+                            throw	sendErrMess(fd, "MODE: Missing parameter for key");
+                            return;
+                        }
+                        channel->setKey(tokens[paramIndex]);
+                        paramIndex++;
+                    } else {
+                        channel->setKey("");
+                    }
+                    break;
+				case 'l':
+					if (add) {
+                        if (tokens.size() <= (size_t)paramIndex) {
+                            throw	sendErrMess(fd, "MODE: Missing parameter for limit");
+                            return;
+                        }
+                        int limit = std::atoi(tokens[paramIndex].c_str());
+                        channel->setUserLimit(limit);
+                        paramIndex++;
+                    } else {
+                        channel->setUserLimit(0);
+                    }
+                    break;
+				case 'o':
+                    if (tokens.size() <= (size_t)paramIndex)
+                        throw	sendErrMess(fd, "MODE: Missing parameter for operator");
+                    {
+                        std::string targetNickname = tokens[paramIndex];
+                        Client* target = getClientByNickname(fd, targetNickname);
+                        if (!target || !channel->hasClient(target))
+                            throw	sendErrMess(fd, "MODE: User not in channel");
+                        channel->setOperator(target, add);
+                        paramIndex++;
+                    }
+                    break;
+                default:
+                    throw sendErrMess(fd, "MODE: Unknown mode parameter");
+                    break;
+			}
+		}
+	}
+	
 }

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/14 14:51:16 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/14 19:32:46 by bastienverdie    ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,13 @@
 Channel::Channel( void ) {}
 
 Channel::Channel(std::string name) :
-	_name(name) {}
+	_name(name),
+	_topic(""),
+	_inviteOnly(false),
+	_topicRestricted(false),
+	_key(""),
+	_userLimit(0)
+{}
 
 Channel::Channel( Channel const & copy ) {*this = copy;}
 
@@ -31,6 +37,20 @@ std::string Channel::getName() const {return _name;}
 std::string	Channel::getTopic() const {return _topic;}
 
 void	Channel::setTopic(std::string topic) {_topic = topic;}
+void	Channel::setInviteOnly(bool flag) { _inviteOnly = flag; }
+void	Channel::setTopicRestricted(bool flag) { _topicRestricted = flag; }
+void	Channel::setKey(const std::string & key) { _key = key; }
+void	Channel::setUserLimit(int limit) { _userLimit = limit; }
+void	Channel::setOperator(Client* client, bool flag) {
+    if (flag) {
+        if (std::find(_operators.begin(), _operators.end(), client) == _operators.end())
+            _operators.push_back(client);
+    } else {
+        std::vector<Client*>::iterator it = std::find(_operators.begin(), _operators.end(), client);
+        if (it != _operators.end())
+            _operators.erase(it);
+    }
+}
 
 void Channel::addClient(Client *client) {
     for (size_t i = 0; i < _clients.size(); i++) {

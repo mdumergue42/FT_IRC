@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/17 21:37:12 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/19 10:53:39 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -229,10 +229,8 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
         if (it != _commandMap.end()) {
             CommandFunc func = it->second;
             (this->*func)(client, fd, tokens);
-        } else {
+        } else
 			std::cout << command << std::endl;
-            //sendErrMess(fd, "Unknown command: " + com);
-        }
     }
 	}
     catch (const std::string &e) {}
@@ -404,6 +402,8 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 		throw	sendErrMess(fd, "User doesn't exist.");
 	if (channel->hasClient(target))
 		throw	sendErrMess(fd, tokens[2] + " is already inside " + tokens[1]);
+	if (target->getNickname().empty() || target->getUsername().empty())
+		throw	sendErrMess(fd, "The target is not identified.");
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]); 
 }

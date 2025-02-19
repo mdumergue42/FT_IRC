@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/17 20:39:20 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/19 18:54:42 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,6 +55,7 @@ class	Server {
 		void				handleMode(Client*, int, const std::vector<std::string>&);
 		void				handleTopic(Client*, int, const std::vector<std::string>&);
 		void				handlePrivMsg(Client*, int, const std::vector<std::string>&);
+		void				handleDie(Client *, int, const std::vector<std::string>&);
 
 	private :
 		int							_port;
@@ -64,6 +65,7 @@ class	Server {
 		std::vector<Client *>		_clientfds;
 		std::map<Client *, std::string>	_clientByN;
 		std::vector<Channel*>		_channels;
+		bool						_run;
 		
 		typedef void (Server::*CommandFunc)(Client* client, int fd, const std::vector<std::string>& tokens);
 		std::map<std::string, CommandFunc> _commandMap;

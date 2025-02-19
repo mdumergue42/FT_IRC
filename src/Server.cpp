@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/19 10:53:39 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/19 18:55:50 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,8 @@
 
 Server::Server(std::string port, std::string password) :
 	_port(std::atoi(port.c_str())),
-	_password(password) {
+	_password(password),
+	_run(true){
 	_commandMap["PASS"] = &Server::handlePass;
 	_commandMap["NICK"] = &Server::handleNick;
 	_commandMap["USER"] = &Server::handleUser;
@@ -28,6 +29,7 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["MODE"] = &Server::handleMode;
 	_commandMap["TOPIC"] = &Server::handleTopic;
 	_commandMap["PRIVMSG"] = &Server::handlePrivMsg;
+	_commandMap["DIE"] = &Server::handleDie;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -238,14 +240,14 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 
 void Server::run() {
 	try {
-	while (1)
+	while (_run)
 	{
+		signal(SIGINT, signalHandler);
 		int poll_count = poll(_pollfds.data(), _pollfds.size(), -1);
 		if (poll_count > 0)
 		{
 			if (_pollfds[0].revents & POLLIN)
 				NewClient();
-
 			for (size_t i = _pollfds.size() - 1; i > 0; i--) {
 				if (_pollfds[i].revents & POLLIN) {
 					char temp[1024];
@@ -265,7 +267,7 @@ void Server::run() {
 						size_t pos;
 						while ((pos = buffer.find("\n")) != std::string::npos) {
 							std::string command = buffer.substr(0, pos);
-							buffer.erase(0, pos + 2);
+							buffer.erase(0, pos + 1);
 							processCommand(client, _pollfds[i].fd, command);
 						}
 					}
@@ -364,7 +366,7 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 		throw	sendErrMess(fd, "You already in " + tokens[1]);
 	if (!channel->getKey().empty())
 		throw	sendErrMess(fd, "You need a secret key to access to " + tokens[1]);
-	if (channel->isInviteOnly()) //verifier si il est inviter
+	if (channel->isInviteOnly()) //verifier si il est inviter avec le vecteur si c good erase du vector
 		throw	sendErrMess(fd, "You was not invited");
 	channel->addClient(client);
 	sendErrMess(fd, "Joined channel " + tokens[1]);
@@ -404,6 +406,7 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 		throw	sendErrMess(fd, tokens[2] + " is already inside " + tokens[1]);
 	if (target->getNickname().empty() || target->getUsername().empty())
 		throw	sendErrMess(fd, "The target is not identified.");
+	//add au vector
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]); 
 }
@@ -543,4 +546,11 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		else
 			send(tmp->getFds(), fullMessage.c_str(), strlen(fullMessage.c_str()), 0);
 	}
+}
+
+void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {
+	(void)client;
+	if (tokens.size() != 1)
+		throw	sendErrMess(fd, "DIE: Too much parameter");
+	_run = false;
 }

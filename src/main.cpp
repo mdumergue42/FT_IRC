@@ -6,11 +6,15 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 16:00:45 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/14 10:20:19 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/19 18:55:41 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "includes/Server.hpp"
+
+void	signalHandler(int signum) {
+	//clear fd client
+	exit(signum);}
 
 int main(int ac, char **av) {
 	if (ac != 3)
@@ -19,6 +23,7 @@ int main(int ac, char **av) {
 //	{
 	Server irc_server(av[1], av[2]);
 
+	signal(SIGINT, signalHandler);
 	irc_server.initserv();
 	irc_server.run();
 //	}

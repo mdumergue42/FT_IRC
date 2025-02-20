@@ -6,11 +6,12 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/19 18:55:50 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/20 13:00:12 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
+#include "includes/Libs.hpp"
 #include <csignal>
 #include <cstddef>
 #include <stdexcept>
@@ -178,7 +179,7 @@ void Server::NewClient() {
     if (client_socket < 0)
 		throw std::runtime_error("Client connection failed");
 
-	std::cout << BLU"Nouveau client connect : " << client_socket << COLOR_RESET << std::endl;
+	std::cout << BLU <<"Nouveau client connect : " << client_socket << COLOR_RESET << std::endl;
         
     struct pollfd client_pollfd;
 	client_pollfd.fd = client_socket;
@@ -309,7 +310,7 @@ void Server::removeClient(int fd) {
         }
     }
 	close(fd);
-	std::cout << YEL"Client disconnected: " << fd << COLOR_RESET << std::endl;
+	std::cout << YEL << "Client disconnected: " << fd << COLOR_RESET << std::endl;
 }
 
 
@@ -317,72 +318,79 @@ void Server::removeClient(int fd) {
 
 void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (client->isAuth())
-		throw	sendErrMess(fd, "You are already authenticated");
+		throw	sendErrMess(fd, codeErr("462") + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendErrMess(fd, "PASS: Missing parameter");
+		throw	sendErrMess(fd, codeErr("461") + "<N/A> " + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
-		throw	sendErrMess(fd, "Password incorrect");
+		throw	sendErrMess(fd, codeErr("464") + "<N/A>" + ERR_PASSWDMISMATCH);
 	client->setAuth(true);
 	sendErrMess(fd, "You was authenticated");
 }
 
+
 void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-        throw	sendErrMess(fd, "NICK: Missing parameter");
-    if (isTaken(1, tokens[1]))
-        sendErrMess(fd, tokens[1] + " is already used");
-    else {
-        client->setNickname(tokens[1]);
-		_clientByN[client] = client->getNickname();
-        sendErrMess(fd, "Nickname accepted");
-    }
+	{
+		if (client->getNickname().empty())
+			throw	sendErrMess(fd, codeErr("431") + "<N/A>" + ERR_NONICKNAMEGIVEN);
+		else	
+			throw	sendErrMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
+	}
+	if (isTaken(1, tokens[1]))
+        throw	sendErrMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
+    client->setNickname(tokens[1]);
+	_clientByN[client] = client->getNickname();
+	sendErrMess(fd, "Nickname accepted");
 }
 
 void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2)
-        throw	sendErrMess(fd, "USER: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
     if (isTaken(0, tokens[1]))
-        sendErrMess(fd, tokens[1] + " is already used.");
+        throw	sendErrMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
     else {
         client->setUsername(tokens[1]);
-        sendErrMess(fd, "User accepted and authenticated.");
+        sendErrMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv Network, " + client->getNickname() + "[!" + client->getUsername() + "@localhost]");
     }
 }
 
 void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendErrMess(fd, "JOIN: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	Channel* channel = getChannel(tokens[1]);
 	if (!channel)
 	{
 		if (!channel->channelName(tokens[1]))
-			throw	sendErrMess(fd, "JOIN: bad prototyping. Missing # at beginning of channel name.");
+			throw	sendErrMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		channel = new Channel(tokens[1]);
 		channel->setOperator(client, false);
 		client->setOp(true);
 		_channels.push_back(channel);
 	}
-	if (channel->hasClient(client))
-		throw	sendErrMess(fd, "You already in " + tokens[1]);
+	if (channel->hasClient(client)) //discutable normalement on doit pas renvoyer d'erreurs mais c'est un peu golmon
+		throw	sendErrMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
 	if (!channel->getKey().empty())
-		throw	sendErrMess(fd, "You need a secret key to access to " + tokens[1]);
+		throw	sendErrMess(fd, codeErr("475") + client->getNickname() + " " + tokens[1] + ERR_BADCHANNELKEY);
 	if (channel->isInviteOnly()) //verifier si il est inviter avec le vecteur si c good erase du vector
-		throw	sendErrMess(fd, "You was not invited");
+		throw	sendErrMess(fd, codeErr("473") + client->getNickname() + " " + tokens[1] + ERR_INVITEONLYCHAN);
 	channel->addClient(client);
+	//plein de message a envoyer
 	sendErrMess(fd, "Joined channel " + tokens[1]);
 }
 
 void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (!client->isOp())
-		throw	sendErrMess(fd, "You are not operator.");
+		throw	sendErrMess(fd, codeErr("482") + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	if (tokens.size() < 3)
-		throw	sendErrMess(fd, "KICK: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
-		throw	sendErrMess(fd, "This channel doesn't exist");
+		throw	sendErrMess(fd, codeErr("403") + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
 	Client *target = getClientByNickname(fd, tokens[2]);
+	if (target->getFds() == client->getFds())
+		throw	sendErrMess(fd, ":localhost " + client->getNickname() + " :You can't kick yourself");
 	if (!channel->hasClient(target))
-		throw	sendErrMess(fd, "The target customer is not in the channel");
+		throw	sendErrMess(fd, codeErr("442") + target->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 	channel->removeClient(target);
 	std::string str = target->getNickname() + " have been kick.";
 	send(client->getFds(), str.c_str(), strlen(str.c_str()), 0);
@@ -391,21 +399,21 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 
 void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendErrMess(fd, "INVITE: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (!client->isOp())
-		throw	sendErrMess(fd, "You are not operator.");
+		throw	sendErrMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
-		throw	sendErrMess(fd, tokens[1] + " doesn't exist");
-	if (!channel->isInviteOnly())
-		throw	sendErrMess(fd, tokens[1] + " is notin invite mode.");
+		throw	sendErrMess(fd, codeErr("403") + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
+	if (!channel->isInviteOnly()) //discutable car ne doit pas renvoyer d'erreur juste ignorer
+		throw	sendErrMess(fd, tokens[1] + " is not in invite mode.");
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (!target)
-		throw	sendErrMess(fd, "User doesn't exist.");
-	if (channel->hasClient(target))
-		throw	sendErrMess(fd, tokens[2] + " is already inside " + tokens[1]);
+		throw	sendErrMess(fd, codeErr("401") + tokens[2] + ERR_NOSUCHNICK);
+	if (channel->hasClient(target)) //discutable
+		throw	sendErrMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
 	if (target->getNickname().empty() || target->getUsername().empty())
-		throw	sendErrMess(fd, "The target is not identified.");
+		throw	sendErrMess(fd, codeErr("441") + target->getNickname() + tokens[1] + ERR_USERNOTINCHANNEL);
 	//add au vector
 	channel->addClient(target);
 	sendErrMess(target->getFds(), "Joined channel " + tokens[1]); 
@@ -413,25 +421,25 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 
 void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendErrMess(fd, "TOPIC: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens.size() == 2)
 	{
 		Channel	*channel = getChannel(tokens[1]);
 		if (!channel)
-			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+			throw	sendErrMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		if (!channel->hasClient(client))
-			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+			throw	sendErrMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 		throw	sendErrMess(fd, channel->getTopic());
 	}
 	else
 	{
 		Channel	*channel = getChannel(tokens[1]);
 		if (!channel)
-			throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+			throw	sendErrMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		if (!channel->hasClient(client))
-			throw	sendErrMess(fd, "You are not part of " + tokens[1]);
-		if (client->isOp())
-			throw	sendErrMess(fd, "You are not channel operator");
+			throw	sendErrMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+		if (!client->isOp())
+			throw	sendErrMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
 		else
 			channel->setTopic(tokens[2]);
 		throw	sendErrMess(fd, "Topic change : " + tokens[3]);
@@ -440,16 +448,16 @@ void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>&
 
 void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 3)
-		throw	sendErrMess(fd, "MODE: Missing parameter.");
+		throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 
 	std::string channelName = tokens[1];
 	Channel *channel = getChannel(channelName);
 	if (!channel)
-		throw	sendErrMess(fd, tokens[1] + " doesn't exist");
+		throw	sendErrMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 	if (!channel->hasClient(client))
-		throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+		throw	sendErrMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 	if (!client->isOp())
-		throw	sendErrMess(fd, "You are not channel operator");
+		throw	sendErrMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	
 	std::string modeStr = tokens[2];
 	bool add = true;
@@ -472,7 +480,7 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 				case 'k':
 					if (add) {
                         if (tokens.size() <= (size_t)paramIndex) {
-                            throw	sendErrMess(fd, "MODE: Missing parameter for key");
+							throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
                             return;
                         }
                         channel->setKey(tokens[paramIndex]);
@@ -483,7 +491,8 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
                     break;
 				case 'l':
 					if (add) {
-                        if (tokens.size() <= (size_t)paramIndex) {
+                        if (tokens.size() <= (size_t)paramIndex) //discutable car ca met juste pas de limite : chelou
+						{
                             throw	sendErrMess(fd, "MODE: Missing parameter for limit");
                             return;
                         }
@@ -496,18 +505,20 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
                     break;
 				case 'o':
                     if (tokens.size() <= (size_t)paramIndex)
-                        throw	sendErrMess(fd, "MODE: Missing parameter for operator");
+						throw	sendErrMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
                     {
                         std::string targetNickname = tokens[paramIndex];
                         Client* target = getClientByNickname(fd, targetNickname);
-                        if (!target || !channel->hasClient(target))
-                            throw	sendErrMess(fd, "MODE: User not in channel");
+						if (!target)
+							throw	sendErrMess(fd, codeErr("401") + tokens[2] + ERR_NOSUCHNICK);
+						if (channel->hasClient(target)) //discutable
+							throw	sendErrMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
                         channel->setOperator(target, add);
                         paramIndex++;
                     }
                     break;
                 default:
-                    throw sendErrMess(fd, "MODE: Unknown mode parameter");
+                    throw sendErrMess(fd, codeErr("472") + client->getNickname() + " " + tokens[2] + ERR_UNKNOWNMODE);
                     break;
 			}
 		}
@@ -517,9 +528,9 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 
 void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendErrMess(fd, "PRIVMSG: Missing parameter");
+		throw	sendErrMess(fd, codeErr("411") + client->getNickname() + ERR_NORECIPIENT + "(" + tokens[0] + ")");
 	if (tokens.size() < 3)
-		throw	sendErrMess(fd, "PRIVMSG: Missing parameter");
+		throw	sendErrMess(fd, codeErr("412") + client->getNickname() + ERR_NOTEXTTOSEND);
 	std::string	fullMessage = "";
 	std::vector<std::string> targets = targetSplit(tokens[1]);
 
@@ -537,9 +548,9 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		{
 			Channel *channel = getChannel(*it);
 			if (!channel)
-				throw	sendErrMess(fd, *it + " doesn't exist");
+				throw	sendErrMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 			if (!channel->hasClient(client))
-				throw	sendErrMess(fd, "You are not part of " + tokens[1]);
+				throw	sendErrMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 			else
 				channel->sendChannelMessage(client, fullMessage);
 		}

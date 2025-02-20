@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:42:09 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/17 20:36:35 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/20 12:50:42 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,12 +30,12 @@ class	Channel {
 		std::string getKey() const { return _key; }
 		int			getUserLimit() const { return _userLimit; }
 		
-		void	setTopic(std::string);
-		void	setInviteOnly(bool flag);
-		void	setTopicRestricted(bool flag);
-		void	setKey(const std::string & key);
-		void	setUserLimit(int limit);
-		void	setOperator(Client* client, bool flag);
+		void		setTopic(std::string);
+		void		setInviteOnly(bool flag);
+		void		setTopicRestricted(bool flag);
+		void		setKey(const std::string & key);
+		void		setUserLimit(int limit);
+		void		setOperator(Client* client, bool flag);
 		
 		void		addClient(Client *client);
 		void		removeClient(Client *client);
@@ -54,6 +54,7 @@ class	Channel {
 		std::string _key;
 	    int _userLimit;
 	    std::vector<Client*> _operators;
+		std::vector<Client*> _invite;
 };
 
 #endif

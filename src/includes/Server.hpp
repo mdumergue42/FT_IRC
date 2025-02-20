@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/20 08:18:37 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/20 13:04:28 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,16 +46,17 @@ class	Server {
 
 		///// Commands /////
 
-		void				handlePass(Client*, int, const std::vector<std::string>&);
-		void				handleNick(Client*, int, const std::vector<std::string>&);
-		void				handleUser(Client*, int, const std::vector<std::string>&);
-		void				handleJoin(Client*, int, const std::vector<std::string>&);
-		void				handleKick(Client*, int, const std::vector<std::string>&);
-		void				handleInvite(Client*, int, const std::vector<std::string>&);
-		void				handleMode(Client*, int, const std::vector<std::string>&);
-		void				handleTopic(Client*, int, const std::vector<std::string>&);
-		void				handlePrivMsg(Client*, int, const std::vector<std::string>&);
-		void				handleDie(Client *, int, const std::vector<std::string>&);
+		void		handlePass(Client*, int, const std::vector<std::string>&);
+		void		handleNick(Client*, int, const std::vector<std::string>&);
+		void		handleUser(Client*, int, const std::vector<std::string>&);
+		void		handleJoin(Client*, int, const std::vector<std::string>&);
+		void		handleKick(Client*, int, const std::vector<std::string>&);
+		void		handleInvite(Client*, int, const std::vector<std::string>&);
+		void		handleMode(Client*, int, const std::vector<std::string>&);
+		void		handleTopic(Client*, int, const std::vector<std::string>&);
+		void		handlePrivMsg(Client*, int, const std::vector<std::string>&);
+		void		handleDie(Client *, int, const std::vector<std::string>&);
+		void		handleQuit(Client *, int, const std::vector<std::string>&);
 
 	private :
 		int							_port;
@@ -65,7 +66,7 @@ class	Server {
 		std::vector<Client *>		_clientfds;
 		std::map<Client *, std::string>	_clientByN;
 		std::vector<Channel*>		_channels;
-		bool						_run;
+		bool	_run;
 		
 		typedef void (Server::*CommandFunc)(Client* client, int fd, const std::vector<std::string>& tokens);
 		std::map<std::string, CommandFunc> _commandMap;

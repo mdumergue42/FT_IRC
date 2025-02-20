@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/20 13:00:12 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/20 14:49:16 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["TOPIC"] = &Server::handleTopic;
 	_commandMap["PRIVMSG"] = &Server::handlePrivMsg;
 	_commandMap["DIE"] = &Server::handleDie;
+	_commandMap["QUIT"] = &Server::handleQuit;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -564,4 +565,10 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 	if (tokens.size() != 1)
 		throw	sendErrMess(fd, "DIE: Too much parameter");
 	_run = false;
+}
+
+void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {
+	if (tokens.size() < 2)
+		throw	sendErrMess(fd, codeErr("411") + client->getNickname() + ERR_NORECIPIENT + "(" + tokens[0] + ")");
+	
 }

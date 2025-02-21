@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/17 21:17:11 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/21 06:57:34 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,8 +20,7 @@ Channel::Channel(std::string name) :
 	_inviteOnly(false),
 	_topicRestricted(false),
 	_key(""),
-	_userLimit(0)
-{}
+	_userLimit(0) {}
 
 Channel::Channel( Channel const & copy ) {*this = copy;}
 
@@ -35,8 +34,15 @@ Channel & Channel::operator=( Channel const & op ) {
 
 std::string Channel::getName() const {return _name;}
 std::string	Channel::getTopic() const {return _topic;}
+std::string	Channel::getTopicWriter() const {return _topicWriter;}
+std::string Channel::getKey() const {return _key;}
+int			Channel::getUserLimit() const {return _userLimit;}
+bool		Channel::isInviteOnly() const {return _inviteOnly;}
+bool		Channel::isTopicRestricted() const {return _topicRestricted;}
+
 
 void	Channel::setTopic(std::string topic) {_topic = topic;}
+void	Channel::setTopicWriter(std::string topicW) {_topicWriter = topicW;}
 void	Channel::setInviteOnly(bool flag) { _inviteOnly = flag; }
 void	Channel::setTopicRestricted(bool flag) { _topicRestricted = flag; }
 void	Channel::setKey(const std::string & key) { _key = key; }

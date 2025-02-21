@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/20 13:04:28 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/21 07:28:53 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,7 @@ class	Server {
 		void						processCommand(Client*, int, const std::string &);
 		void						removeClient(int);
 		std::vector<std::string>	targetSplit(std::string);
+		void		sendServerMessage(Client*, std::string);
 
 		///// Commands /////
 

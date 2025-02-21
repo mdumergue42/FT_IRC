@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:42:09 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/20 12:50:42 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/21 06:56:32 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,12 +25,14 @@ class	Channel {
 
 		std::string getName() const;
 		std::string	getTopic() const;
-		bool		isInviteOnly() const { return _inviteOnly; }
-		bool		isTopicRestricted() const { return _topicRestricted; }
-		std::string getKey() const { return _key; }
-		int			getUserLimit() const { return _userLimit; }
+		std::string	getTopicWriter() const;
+		std::string getKey() const;
+		int			getUserLimit() const;
+		bool		isInviteOnly() const;
+		bool		isTopicRestricted() const;
 		
 		void		setTopic(std::string);
+		void		setTopicWriter(std::string);
 		void		setInviteOnly(bool flag);
 		void		setTopicRestricted(bool flag);
 		void		setKey(const std::string & key);
@@ -47,6 +49,7 @@ class	Channel {
 	private:
 		std::string _name;
 		std::string _topic;
+		std::string	_topicWriter;
 		std::vector<Client*> _clients;
 
 		bool _inviteOnly;

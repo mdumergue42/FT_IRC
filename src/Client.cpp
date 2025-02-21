@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:24:36 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/20 07:28:26 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/21 07:26:06 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@ Client::Client( int fds ) :
 	_fds(fds),
 	_isOperator(false),
 	_isAuth(false),
+	_isAlreadyNick(false),
 	_username(""),
 	_nickname(""),
 	_buf("") {}
@@ -45,6 +46,7 @@ void	Client::setNickname( std::string nickname ) {_nickname = nickname;}
 void	Client::setUsername( std::string username ) {_username = username;}
 void	Client::setOp( bool op ) {_isOperator = op;}
 void	Client::setAuth( bool auth ) {_isAuth = auth;}
+void	Client::setAlreadyNick( bool alreadyNick ) {_isAlreadyNick = alreadyNick;}
 
 
 /*Getters*/
@@ -55,3 +57,4 @@ std::string		Client::getNickname( void ) const {return _nickname;}
 std::string&	Client::getBuffer( void ) {return _buf;}
 bool			Client::isAuth( void ) const {return _isAuth;}
 bool			Client::isOp( void ) const {return _isOperator;};
+bool			Client::isAlreadyNick( void ) const {return _isAlreadyNick;}

@@ -6,15 +6,16 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 16:00:45 by basverdi          #+#    #+#             */
-/*   Updated: 2025/02/20 08:30:27 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/24 15:00:38 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "includes/Server.hpp"
 
 void	signalHandler(int signum) {
-	//clear fd client
-	exit(signum);}
+	(void)signum;
+	//	exit(signum);
+	}
 
 const std::string	codeErr(std::string code) {
 	std::string final = RED + ":localhost " + code + " " + COLOR_RESET;

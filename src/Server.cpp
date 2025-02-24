@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/24 16:24:15 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/24 16:31:14 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -634,6 +634,10 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 	}
 }
 
+///////////////////////////////////WARNING///////////////////////
+//////////gros probleme -> faire un quit puis un die avec un autre client 1 leak a cause du quit sauf que
+///////////////////////////si je rajoute le delete qu'il faut c'est pire donc nsm
+
 void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {
 	(void)client;
 	if (tokens.size() != 1)
@@ -660,7 +664,7 @@ void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& 
 		if (_channels[i]->hasClient(client))
 			_channels[i]->removeClient(client);
 	}
-	std::string fullMess = "hola cmt taler taler vou";
+	std::string fullMess = "hola cmt taler taler vou nsm";
 //	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
 	removeClient(fd);

@@ -3,3 +3,4 @@ ircserv
 a.out
 obj/
 .DS_*
+.nfs*

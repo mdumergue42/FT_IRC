@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/25 17:34:28 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/25 19:15:51 by basverdi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -229,31 +229,29 @@ void Server::NewClient() {
 
 void Server::processCommand(Client* client, int fd, const std::string &command) {
     try {
-	std::vector<std::string> tokens = splitCom(command);
-    if (tokens.empty() || tokens[0].empty())
-        return;
-    std::string com = tokens[0];
-	std::cout << "Recu : " + command << std::endl;
-    if (!client->isAuth())
-    {
-        if (command != "CAP LS 302\r" && com != "PASS")
-            throw	sendMess(fd, "You are not authenticated");
-    } else if (client->getNickname().empty()) {
-        if (com != "NICK")
-            throw	sendMess(fd, "You must first define a nickname");
-    } else if (client->getUsername().empty()) {
-        if (com != "USER")
-            throw	sendMess(fd, "You must first define a username");
-    }
-    if (command != "CAP LS 302\r") {
-        std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
-        if (it != _commandMap.end()) {
-            CommandFunc func = it->second;
-			std::cout << "la" + tokens[0] << std::endl;
-            (this->*func)(client, fd, tokens);
-        } else
-			std::cout << "ici" + command << std::endl;
-    }
+		std::vector<std::string> tokens = splitCom(command);
+		if (tokens.empty() || tokens[0].empty())
+		    return;
+		std::string com = tokens[0];
+		std::cout << "Recu : " + command << std::endl;
+		if (!client->isAuth())
+		{
+		    if (command != "CAP LS 302\r" && com != "PASS")
+		        throw	sendMess(fd, "You are not authenticated");
+		} else if (client->getNickname().empty()) {
+		    if (com != "NICK")
+		        throw	sendMess(fd, "You must first define a nickname");
+		} else if (client->getUsername().empty()) {
+		    if (com != "USER")
+		        throw	sendMess(fd, "You must first define a username");
+		}
+		if (command != "CAP LS 302\r") {
+		    std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
+		    if (it != _commandMap.end()) {
+		        CommandFunc func = it->second;
+				(this->*func)(client, fd, tokens);
+			}
+		}
 	}
     catch (const std::string &e) {}
 }
@@ -320,55 +318,48 @@ void Server::run() {
 
 void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (client->isAuth())
-		throw	sendMess(fd, codeErr("462") + client->getNickname() + ERR_ALREADYREGISTERED);
+		throw	sendMess(fd, "462 " + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
-		throw	sendMess(fd, codeErr("464") + client->getNickname() + ERR_PASSWDMISMATCH);
+		throw	sendMess(fd, "464 " + client->getNickname() + ERR_PASSWDMISMATCH);
 	client->setAuth(true);	
 }
 
 
 void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-	{
-		if (client->getNickname().empty())
-			throw	sendMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
-		else	
-			throw	sendMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
-	}
+		throw	sendMess(fd, "431 " + client->getNickname() + ERR_NONICKNAMEGIVEN);
 	if (isTaken(1, tokens[1]))
-        throw	sendMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
+        throw	sendMess(fd, ":localhost 433 " + client->getNickname() + " " + tokens[1] + ERR_NICKNAMEINUSE);
 	std::string	oldNick = client->getNickname();
 	client->setNickname(tokens[1]);
 	_clientByN[client] = client->getNickname();
-	if (client->getUsername().empty() && client->isAlreadyNick() == false)
+	if (client->getUsername().empty() && !client->isRegistered())
 	{
-		client->setAlreadyNick(true);
-		sendMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv Network, " + client->getNickname() + "[!" + client->getUsername() + "@localhost]\r\n");
+		client->setRegister(true);
+		sendMess(fd, ":localhost 001 " + client->getNickname() + " :Welcome to the IRC server\r\n");
 	}
 	else
 	{
 		std::string	mess;
-		if (!client->getUsername().empty())
-			mess += ":" + client->getNickname() + "!" + client->getNickname() + "@localhost NICK :" + oldNick + "\r\n";
-		else
-			mess += ":" + client->getNickname() + "!" + client->getUsername() + "@localhost NICK :" + oldNick + "\r\n";
+		mess += ":" + oldNick + " NICK " + client->getNickname() + "\r\n";
 		sendServerMessage(client, mess);
-		send(fd, mess.c_str(), strlen(mess.c_str()), 0);
+		sendMess(fd, mess.c_str());
 	}
 }
 
 void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
 	std::string	oldUser = client->getUsername();
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, codeErr("461 ") + client->getNickname() + " USER :Not enough parameters\r\n");
     if (isTaken(0, tokens[1])) {
         throw	sendMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
 	}
 	if (oldUser.empty()) {
 		sendMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv Network, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");
 	}
+	client->setRegister(true);
 	client->setUsername(tokens[1]);
 }
 

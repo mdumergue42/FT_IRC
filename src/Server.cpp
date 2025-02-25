@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/24 16:31:14 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/02/25 17:34:28 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,7 +136,7 @@ std::string	Server::sendMess(int fds, std::string message) {
 	message += "\n";
 	const char *mess = message.c_str();
 	send(fds, mess, strlen(mess), 0);
-	std::cout << message; // que si on veut afficher dans le serveur
+	std::cout << "Envoye : " + message;
 	return message;
 }
 
@@ -233,29 +233,7 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
     if (tokens.empty() || tokens[0].empty())
         return;
     std::string com = tokens[0];
-    /*if (command == "DATA") {
-        std::cout << "\033[36m=== Données des Clients sur le serveur ===\033[0m" << std::endl;
-        for (size_t i = 0; i < _clientfds.size(); i++) {
-            Client* client = _clientfds[i];
-            std::cout << "Client FD: " << client->getFds() << std::endl;
-            std::cout << "Nickname: " << client->getNickname() << std::endl;
-            std::cout << "Username: " << client->getUsername() << std::endl;
-            std::cout << "Authenticated: " << (client->isAuth() ? "Yes" : "No") << std::endl;
-            std::cout << "Buffer: " << client->getBuffer() << std::endl;
-			std::cout << "Channels: ";
-            bool inChannel = false;
-            for (size_t j = 0; j < _channels.size(); j++) {
-                if (_channels[j]->hasClient(client)) {  // Vérifier si le client est dans ce channel
-                    std::cout << _channels[j]->getName() << " ";
-                    inChannel = true;
-                }
-            }
-            if (!inChannel)
-                std::cout << "None";
-            std::cout << "-------------------------------------" << std::endl;
-        }
-        return;
-    }*/
+	std::cout << "Recu : " + command << std::endl;
     if (!client->isAuth())
     {
         if (command != "CAP LS 302\r" && com != "PASS")
@@ -271,10 +249,10 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
         std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
         if (it != _commandMap.end()) {
             CommandFunc func = it->second;
-			std::cout << tokens[0] << std::endl;
+			std::cout << "la" + tokens[0] << std::endl;
             (this->*func)(client, fd, tokens);
         } else
-			std::cout << command << std::endl;
+			std::cout << "ici" + command << std::endl;
     }
 	}
     catch (const std::string &e) {}
@@ -305,16 +283,11 @@ void Server::run() {
 					if (bytes > 0) {
 						temp[bytes]= '\0';
 						buffer += temp;
-
-						size_t pos = buffer.find("\n");
-						while (pos != std::string::npos) {
+						size_t pos;
+						while ((pos = buffer.find("\n")) != std::string::npos) {
 							std::string command = buffer.substr(0, pos);
 							buffer.erase(0, pos + 1);
-							std::cerr << "buffer |" << buffer << "|\n";
 							processCommand(client, _pollfds[i].fd, command);
-							pos = buffer.find("\n");
-							if (pos == std::string::npos)
-								break ;
 						}
 					}
 					else if (bytes == 0)
@@ -349,11 +322,10 @@ void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& 
 	if (client->isAuth())
 		throw	sendMess(fd, codeErr("462") + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461") + "<N/A> " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, codeErr("461") + client->getNickname() + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
-		throw	sendMess(fd, codeErr("464") + "<N/A>" + ERR_PASSWDMISMATCH);
-	client->setAuth(true);
-	sendMess(fd, codeErr("001") + "unknown :Welcome to the ircserv Network\r\n");
+		throw	sendMess(fd, codeErr("464") + client->getNickname() + ERR_PASSWDMISMATCH);
+	client->setAuth(true);	
 }
 
 
@@ -361,7 +333,7 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 	if (tokens.size() < 2)
 	{
 		if (client->getNickname().empty())
-			throw	sendMess(fd, codeErr("431") + "<N/A>" + ERR_NONICKNAMEGIVEN);
+			throw	sendMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
 		else	
 			throw	sendMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
 	}
@@ -379,7 +351,7 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 	{
 		std::string	mess;
 		if (!client->getUsername().empty())
-			mess += ":" + client->getNickname() + "!" + "<N/A>@localhost NICK :" + oldNick + "\r\n";
+			mess += ":" + client->getNickname() + "!" + client->getNickname() + "@localhost NICK :" + oldNick + "\r\n";
 		else
 			mess += ":" + client->getNickname() + "!" + client->getUsername() + "@localhost NICK :" + oldNick + "\r\n";
 		sendServerMessage(client, mess);

@@ -6,11 +6,12 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/21 06:57:34 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/01 14:59:41 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Channel.hpp"
+#include <climits>
 
 Channel::Channel( void ) {}
 
@@ -39,6 +40,17 @@ std::string Channel::getKey() const {return _key;}
 int			Channel::getUserLimit() const {return _userLimit;}
 bool		Channel::isInviteOnly() const {return _inviteOnly;}
 bool		Channel::isTopicRestricted() const {return _topicRestricted;}
+bool		Channel::isInInviteList(Client *client) {
+	for (size_t i = 0; i < _invite.size(); i++){
+		std::cout << _invite[i]->getNickname() << std::endl;
+		if (_invite[i]->getFds() == client->getFds())
+		{
+			std::cerr << "TROUVER\n";
+			return true;
+		}
+	}
+	return false;
+}
 
 
 void	Channel::setTopic(std::string topic) {_topic = topic;}
@@ -58,11 +70,31 @@ void	Channel::setOperator(Client* client, bool flag) {
     }
 }
 
+void	Channel::addInviteList(Client *client, bool flag) {
+	if (flag == true) {
+		if (std::find(_invite.begin(), _invite.end(), client) == _invite.end())
+		{
+			std::cerr << "il est add\n";
+			_invite.push_back(client);
+		}
+	}
+	else
+	{
+		std::vector<Client *>::iterator it = std::find(_invite.begin(), _invite.end(), client);
+		if (it != _invite.end())
+		{
+			std::cerr << "il a join donc degage list\n";
+			_invite.erase(it);
+		}
+	}
+}
+
 void Channel::addClient(Client *client) {
     for (size_t i = 0; i < _clients.size(); i++) {
         if (_clients[i] == client)
             return;
     }
+	std::cerr << "tagrandmere:" << client->getNickname() << "|" << std::endl;
     _clients.push_back(client);
 }
 

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/25 19:15:51 by basverdi         ###   ########.fr       */
+/*   Updated: 2025/03/01 15:33:06 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,10 +17,16 @@
 #include <stdexcept>
 #include <sys/socket.h>
 
+volatile std::sig_atomic_t	run_signal = 1;
+
+void	signalHandler(int signum) {
+	if (signum == SIGINT)
+		run_signal = 0;
+}
+
 Server::Server(std::string port, std::string password) :
 	_port(std::atoi(port.c_str())),
-	_password(password),
-	_run(true){
+	_password(password){
 	_commandMap["PASS"] = &Server::handlePass;
 	_commandMap["NICK"] = &Server::handleNick;
 	_commandMap["USER"] = &Server::handleUser;
@@ -37,9 +43,18 @@ Server::Server(std::string port, std::string password) :
 Server::Server( Server const & copy ) {*this = copy;}
 
 Server::~Server( void ) {
-//	removeChannel();
+	close(_server_fd);
+
+	for (std::vector<struct pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); it++) {
+		close(it->fd);
+	}
+
 	for (std::vector<Client *>::iterator it = _clientfds.begin(); it != _clientfds.end(); it++) {
 		close((*it)->getFds());
+		delete *it;
+	}
+	
+	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
 		delete *it;
 	}
 }
@@ -89,7 +104,7 @@ void Server::removeClient(int fd) {
 	}
 	for (std::vector<Client*>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
 		if ((*it)->getFds() == fd) {
-		//	delete *it; // avec pas de leaks mais invalid read size
+			delete *it; // avec pas de leaks mais invalid read size
 			_clientfds.erase(it);
 			break;
 		}
@@ -258,7 +273,7 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 
 void Server::run() {
 	try {
-	while (_run)
+	while (run_signal)
 	{
 		signal(SIGINT, signalHandler);
 		int poll_count = poll(_pollfds.data(), _pollfds.size(), -1);
@@ -320,9 +335,9 @@ void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& 
 	if (client->isAuth())
 		throw	sendMess(fd, "462 " + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendMess(fd, "461 " + client->getNickname() + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() +/*espace ici en plus non ?*/ tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
-		throw	sendMess(fd, "464 " + client->getNickname() + ERR_PASSWDMISMATCH);
+		throw	sendMess(fd, "464 " + client->getNickname() + ERR_PASSWDMISMATCH); //n'affiche pas le nickname
 	client->setAuth(true);	
 }
 
@@ -380,8 +395,9 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 		throw	sendMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
 	if (!channel->getKey().empty())
 		throw	sendMess(fd, codeErr("475") + client->getNickname() + " " + tokens[1] + ERR_BADCHANNELKEY);
-	if (channel->isInviteOnly())
+	if (channel->isInviteOnly() && channel->isInInviteList(client) == false)
 		throw	sendMess(fd, codeErr("473") + client->getNickname() + " " + tokens[1] + ERR_INVITEONLYCHAN);
+	channel->addInviteList(client, false);
 	channel->addClient(client);
 	std::string mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost JOIN " + tokens[1] + "\r\n";
 	channel->sendChannelMessage(client, mess);
@@ -435,9 +451,8 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 		throw	sendMess(fd, codeErr("441") + target->getNickname() + tokens[1] + ERR_USERNOTINCHANNEL);
 	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost INVITE " + target->getNickname() + tokens[1] + "\r\n";
 	channel->sendChannelMessage(client, mess);
-	sendMess(target->getFds(), "JOIN " + tokens[1] + "\r\n");
+	channel->addInviteList(target, true);
 	sendMess(fd, codeErr("341") + client->getNickname() + " " + target->getNickname() + " " + tokens[1] + "\r\n");
-	channel->addClient(target);
 }
 
 void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
@@ -597,20 +612,11 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 	}
 }
 
-///////////////////////////////////WARNING///////////////////////
-//////////gros probleme -> faire un quit puis un die avec un autre client 1 leak a cause du quit sauf que
-///////////////////////////si je rajoute le delete qu'il faut c'est pire donc nsm
-
 void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {
 	(void)client;
 	if (tokens.size() != 1)
 		throw	sendMess(fd, "DIE: Too much parameter");
-	_run = false;
-//	for (size_t i = 0; i < _clientfds.size(); i++) {
-//		removeClient(_clientfds[i]->getFds());
-//	}
-//	removeClient(fd);
-//	removeChannel();
+	run_signal = 0;
 }
 
 void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {
@@ -627,10 +633,7 @@ void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& 
 		if (_channels[i]->hasClient(client))
 			_channels[i]->removeClient(client);
 	}
-	std::string fullMess = "hola cmt taler taler vou nsm";
-//	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
+	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
-	removeClient(fd);
-	delete client;
 	close(fd);
 }

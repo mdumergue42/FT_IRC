@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/24 11:00:11 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/01 13:30:36 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,7 +70,6 @@ class	Server {
 		std::vector<Client *>		_clientfds;
 		std::map<Client *, std::string>	_clientByN;
 		std::vector<Channel*>		_channels;
-		bool	_run;
 		
 		typedef void (Server::*CommandFunc)(Client* client, int fd, const std::vector<std::string>& tokens);
 		std::map<std::string, CommandFunc> _commandMap;

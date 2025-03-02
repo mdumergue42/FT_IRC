@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/01 13:30:36 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/02 03:14:14 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,7 @@ class	Server {
 		Client*						getFdsClient(int);
 		Client*						getClientByNickname(int, std::string);
 		Channel*					getChannel(const std::string &);
+		std::string					getDisplayName(int fd);
 
 		//// Utils ////
 

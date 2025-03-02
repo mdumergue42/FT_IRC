@@ -6,13 +6,14 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/01 15:33:06 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/02 04:38:00 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "./includes/Server.hpp"
 #include "includes/Libs.hpp"
 #include <csignal>
+#include <sstream>
 #include <cstddef>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -38,6 +39,8 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["PRIVMSG"] = &Server::handlePrivMsg;
 	_commandMap["DIE"] = &Server::handleDie;
 	_commandMap["QUIT"] = &Server::handleQuit;
+
+	std::cout << "🚀 Initialisation des commandes serveur... ✅" << std::endl;
 }
 
 Server::Server( Server const & copy ) {*this = copy;}
@@ -57,6 +60,7 @@ Server::~Server( void ) {
 	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
 		delete *it;
 	}
+	std::cout << "🧹 [CLEANUP] Fermeture du serveur, nettoyage des clients et canaux..." << std::endl;
 }
 
 Server &	Server::operator=( Server const & op ) {
@@ -93,6 +97,19 @@ Client*	Server::getClientByNickname(int fd, std::string name) {
 	return NULL;
 }
 
+std::string to_string_compat(int value) {
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
+
+std::string Server::getDisplayName(int fd) {
+    Client* client = getFdsClient(fd);
+    if (client && !client->getNickname().empty())
+        return to_string_compat(fd) + ":" + client->getNickname();
+    return to_string_compat(fd);
+}
+
 //////// REMOVE ////////
 
 void Server::removeClient(int fd) {
@@ -110,13 +127,14 @@ void Server::removeClient(int fd) {
 		}
 	}
 	close(fd);
-	std::cout << YEL << "Client disconnected: " << fd << COLOR_RESET << std::endl;
+	std::cout << YEL << "👋 [DISCONNECT] Client déconnecté: " << getDisplayName(fd) << RESET << std::endl;
 }
 
 void	Server::removeChannel(void) {
 	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
 		_channels.erase(it);
 	}
+	std::cout << YEL << "🏷️ [CHANNELS] Suppression de tous les canaux..." << RESET << std::endl;
 }
 
 ///////////// Utils ///////////////
@@ -148,10 +166,12 @@ bool	Server::isTaken( int code, std::string name ) {
 }
 
 std::string	Server::sendMess(int fds, std::string message) {
-	message += "\n";
-	const char *mess = message.c_str();
-	send(fds, mess, strlen(mess), 0);
-	std::cout << "Envoye : " + message;
+	ssize_t sent = send(fds, message.c_str(), message.size(), 0);
+	if (sent == -1) {
+		std::cerr << RED << "❌ [ERROR] Envoi échoué au client " << fds << " : " << strerror(errno) << RESET << std::endl;
+		return "";
+	}
+	std::cout << CYN << "📤 [SEND] [->" << getDisplayName(fds) << "] " << message << RESET;
 	return message;
 }
 
@@ -204,26 +224,41 @@ void Server::initserv() {
 	this->_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (this->_server_fd == -1)
 		throw	std::runtime_error("Server socket creation failed");
-	sockaddr_in	adServ;
+	int opt = 1;
+	if (setsockopt(this->_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+		throw std::runtime_error("setsockopt(SO_REUSEADDR) failed");
+	
+	std::cout << "🧱 Création du socket serveur... ✅" << std::endl;
 	
 	int flags = fcntl(_server_fd, F_GETFL, 0);
 	fcntl(_server_fd, F_SETFL, flags | O_NONBLOCK);
 
+	std::cout << "⚡️ Passage du socket en mode non-bloquant... ✅" << std::endl;
+
+	sockaddr_in	adServ;
 	adServ.sin_family = AF_INET;
 	adServ.sin_port = htons(this->_port);
 	adServ.sin_addr.s_addr = INADDR_ANY;
 
+	std::cout << "📍 Configuration de l’adresse et du port... (port " << this->_port << ")" << std::endl;
+
 	if (bind(this->_server_fd, (struct sockaddr *)&adServ, sizeof(adServ)) < 0)
 		throw std::runtime_error("Socket binding failed");
-
+	
+	std::cout << "🔗 Liaison du socket à l’adresse et au port... ✅" << std::endl;
+	
 	if (listen(this->_server_fd, 5) > 0)
 		throw std::runtime_error("Socket listening failed");
-
+	
+	std::cout << "👂 Mise en écoute sur le port " << this->_port << "... ✅" << std::endl;
+	
 	pollfd server_pollfd;
 	memset(&server_pollfd, 0, sizeof(server_pollfd));
 	server_pollfd.fd = this->_server_fd;
 	server_pollfd.events = POLLIN;
 	_pollfds.push_back(server_pollfd);
+	
+	std::cout << "🚀 Serveur prêt et en attente de connexions ! 🎉" << std::endl;
 }
 
 void Server::NewClient() {
@@ -233,9 +268,9 @@ void Server::NewClient() {
     if (client_socket < 0)
 		throw std::runtime_error("Client connection failed");
 
-	std::cout << BLU <<"Nouveau client connect : " << client_socket << COLOR_RESET << std::endl;
-        
-    struct pollfd client_pollfd;
+	std::cout << GRN << "🆕 [CONNECT] Client connecté sur fd " << client_socket << RESET << std::endl;        
+    
+	struct pollfd client_pollfd;
 	client_pollfd.fd = client_socket;
 	client_pollfd.events = POLLIN | POLLOUT;
 	client_pollfd.revents = 0;
@@ -248,7 +283,7 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 		if (tokens.empty() || tokens[0].empty())
 		    return;
 		std::string com = tokens[0];
-		std::cout << "Recu : " + command << std::endl;
+		std::cout << MAG << "📥 [COMMAND] [<-" << getDisplayName(fd) << "] " << command << WHT << std::endl;
 		if (!client->isAuth())
 		{
 		    if (command != "CAP LS 302\r" && com != "PASS")
@@ -273,6 +308,7 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 
 void Server::run() {
 	try {
+	std::cout << "🏃 Lancement de la loop principale du serveur..." << std::endl;
 	while (run_signal)
 	{
 		signal(SIGINT, signalHandler);
@@ -351,10 +387,7 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 	client->setNickname(tokens[1]);
 	_clientByN[client] = client->getNickname();
 	if (client->getUsername().empty() && !client->isRegistered())
-	{
 		client->setRegister(true);
-		sendMess(fd, ":localhost 001 " + client->getNickname() + " :Welcome to the IRC server\r\n");
-	}
 	else
 	{
 		std::string	mess;
@@ -372,7 +405,14 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
         throw	sendMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
 	}
 	if (oldUser.empty()) {
-		sendMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv Network, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");
+		time_t now = time(NULL);
+		std::string creationTime = ctime(&now);
+		creationTime = creationTime.substr(0, creationTime.size() - 1);
+		sendMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");	
+		sendMess(fd, codeErr("002") + client->getNickname() + " :Your host is ircserv, running version 0.1\r\n");
+		sendMess(fd, codeErr("003") + client->getNickname() + " :This server was created " + creationTime + "\r\n");
+		sendMess(fd, codeErr("004") + client->getNickname() + " ircserv 0.1 localhost o itkol\r\n");
+		sendMess(fd, codeErr("005") + client->getNickname() + " NICKLEN=9 CHANTYPES=# :are supported by this server\r\n");
 	}
 	client->setRegister(true);
 	client->setUsername(tokens[1]);
@@ -612,28 +652,43 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 	}
 }
 
-void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {
+void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {	
 	(void)client;
 	if (tokens.size() != 1)
-		throw	sendMess(fd, "DIE: Too much parameter");
+		throw	sendMess(fd, RED + "DIE: Too much parameter" + WHT);	
+
+	std::cout << RED << "🔥 [ALERTE] DIE reçue de " << getDisplayName(fd) << ". Extinction du serveur." << WHT << std::endl;
+
+	while (!_clientfds.empty()) {
+		Client *c = _clientfds.back();
+		close(c->getFds());
+		delete c;
+		_clientfds.pop_back();
+	}
+
+	std::cout << GRN << "✅ Tous les clients et canaux ont été déconnectés proprement." << WHT << std::endl;
 	run_signal = 0;
+	std::cout << RED << "☠️ [SHUTDOWN] Serveur éteint par " << getDisplayName(fd) << WHT << std::endl;
 }
 
 void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {
 	std::string	reason;
 	if (tokens.size() < 2)
 		reason += " :No reason";
-	else
-	{
+	else {
 		for (size_t i = 1; i < tokens.size(); ++i) {
 			reason += " " + tokens[i];
 		}
 	}
+
 	for (size_t i = 0; i < _channels.size(); i++) {
 		if (_channels[i]->hasClient(client))
 			_channels[i]->removeClient(client);
 	}
+
 	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
 	close(fd);
+
+	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison:" << reason << WHT << std::endl;
 }

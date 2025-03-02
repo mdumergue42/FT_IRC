@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/02 04:38:00 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/02 05:44:03 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -217,7 +217,6 @@ void	Server::sendServerMessage(Client *client, std::string message) {
 	}
 }
 
-
 //////////// Exec //////////////
 
 void Server::initserv() {
@@ -284,16 +283,15 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 		    return;
 		std::string com = tokens[0];
 		std::cout << MAG << "📥 [COMMAND] [<-" << getDisplayName(fd) << "] " << command << WHT << std::endl;
-		if (!client->isAuth())
-		{
-		    if (command != "CAP LS 302\r" && com != "PASS")
-		        throw	sendMess(fd, "You are not authenticated");
-		} else if (client->getNickname().empty()) {
-		    if (com != "NICK")
-		        throw	sendMess(fd, "You must first define a nickname");
+		if (!client->isAuth()) {
+			if (command != "CAP LS 302\r" && com != "PASS")
+				throw sendMess(fd, ":localhost 451 " + client->getNickname() + " :You have not registered\r\n");
+    	} else if (client->getNickname().empty() || client->getNickname() == "*") {
+			if (com != "NICK")
+		        throw sendMess(fd, ":localhost 431 * :No nickname given\r\n");
 		} else if (client->getUsername().empty()) {
 		    if (com != "USER")
-		        throw	sendMess(fd, "You must first define a username");
+		        throw sendMess(fd, ":localhost 451 " + client->getNickname() + " :You have not registered\r\n");
 		}
 		if (command != "CAP LS 302\r") {
 		    std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
@@ -362,34 +360,31 @@ void Server::run() {
 	catch(std::exception & e) {}
 }
 
-
-
-
 ////////////////// COMMANDS ////////////////////////
 
 void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (client->isAuth())
-		throw	sendMess(fd, "462 " + client->getNickname() + ERR_ALREADYREGISTERED);
+		throw	sendMess(fd, ":localhost 462 " + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendMess(fd, "461 " + client->getNickname() +/*espace ici en plus non ?*/ tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
-		throw	sendMess(fd, "464 " + client->getNickname() + ERR_PASSWDMISMATCH); //n'affiche pas le nickname
-	client->setAuth(true);	
+		throw	sendMess(fd, ":localhost 464 " + client->getNickname() + ERR_PASSWDMISMATCH);
+	client->setAuth(true);
+	std::cout << GRN << "✅ [AUTH] [" << getDisplayName(fd) << "] is Authenticated" << RESET << std::endl;
 }
-
 
 void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendMess(fd, "431 " + client->getNickname() + ERR_NONICKNAMEGIVEN);
+		throw	sendMess(fd, ":localhost 431 " + client->getNickname() + ERR_NONICKNAMEGIVEN);
 	if (isTaken(1, tokens[1]))
         throw	sendMess(fd, ":localhost 433 " + client->getNickname() + " " + tokens[1] + ERR_NICKNAMEINUSE);
 	std::string	oldNick = client->getNickname();
 	client->setNickname(tokens[1]);
 	_clientByN[client] = client->getNickname();
-	if (client->getUsername().empty() && !client->isRegistered())
+	if (client->getUsername().empty() && !client->isRegistered()) {
 		client->setRegister(true);
-	else
-	{
+		std::cout << GRN << "✅ [NICK] [" << fd << ":" + oldNick + "] is now registered as " << client->getNickname() << RESET << std::endl;
+	} else {
 		std::string	mess;
 		mess += ":" + oldNick + " NICK " + client->getNickname() + "\r\n";
 		sendServerMessage(client, mess);
@@ -400,19 +395,19 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
 	std::string	oldUser = client->getUsername();
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461 ") + client->getNickname() + " USER :Not enough parameters\r\n");
+		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " USER :Not enough parameters\r\n");
     if (isTaken(0, tokens[1])) {
-        throw	sendMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
+        throw	sendMess(fd, ":localhost 433 " + tokens[1] + ERR_NICKNAMEINUSE);
 	}
 	if (oldUser.empty()) {
 		time_t now = time(NULL);
 		std::string creationTime = ctime(&now);
 		creationTime = creationTime.substr(0, creationTime.size() - 1);
-		sendMess(fd, codeErr("001") + client->getNickname() + " :Welcome to the ircserv, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");	
-		sendMess(fd, codeErr("002") + client->getNickname() + " :Your host is ircserv, running version 0.1\r\n");
-		sendMess(fd, codeErr("003") + client->getNickname() + " :This server was created " + creationTime + "\r\n");
-		sendMess(fd, codeErr("004") + client->getNickname() + " ircserv 0.1 localhost o itkol\r\n");
-		sendMess(fd, codeErr("005") + client->getNickname() + " NICKLEN=9 CHANTYPES=# :are supported by this server\r\n");
+		sendMess(fd, ":localhost 001 " + client->getNickname() + " :Welcome to the ircserv, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");	
+		sendMess(fd, ":localhost 002 " + client->getNickname() + " :Your host is ircserv, running version 0.1\r\n");
+		sendMess(fd, ":localhost 003 " + client->getNickname() + " :This server was created " + creationTime + "\r\n");
+		sendMess(fd, ":localhost 004 " + client->getNickname() + " ircserv 0.1 o itkol\r\n");
+		sendMess(fd, ":localhost 005 " + client->getNickname() + " NICKLEN=9 CHANTYPES=# :are supported by this server\r\n");
 	}
 	client->setRegister(true);
 	client->setUsername(tokens[1]);
@@ -420,19 +415,19 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
 
 void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	Channel* channel = getChannel(tokens[1]);
 	if (!channel)
 	{
 		if (!channel->channelName(tokens[1]))
-			throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+			throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		channel = new Channel(tokens[1]);
 		channel->setOperator(client, false);
 		client->setOp(true);
 		_channels.push_back(channel);
 	}
 	if (channel->hasClient(client)) //discutable normalement on doit pas renvoyer d'erreurs mais c'est un peu golmon
-		throw	sendMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
+		throw	sendMess(fd, "443 " + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
 	if (!channel->getKey().empty())
 		throw	sendMess(fd, codeErr("475") + client->getNickname() + " " + tokens[1] + ERR_BADCHANNELKEY);
 	if (channel->isInviteOnly() && channel->isInInviteList(client) == false)
@@ -442,24 +437,24 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 	std::string mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost JOIN " + tokens[1] + "\r\n";
 	channel->sendChannelMessage(client, mess);
 	send(fd, mess.c_str(), strlen(mess.c_str()), 0);
-	sendMess(fd, codeErr("332") + client->getNickname() + " " + tokens[1] + " :" + channel->getTopic());
-	sendMess(fd, codeErr("353") + client->getNickname() + "=" + tokens[1] + " :@" + client->getNickname() + "\r\n");
-	sendMess(fd, codeErr("366") + client->getNickname() + " " + tokens[1] + RPL_ENDOFNAMES);
+	sendMess(fd, "332 " + client->getNickname() + " " + tokens[1] + " :" + channel->getTopic());
+	sendMess(fd, "353 " + client->getNickname() + "=" + tokens[1] + " :@" + client->getNickname() + "\r\n");
+	sendMess(fd, "366 " + client->getNickname() + " " + tokens[1] + RPL_ENDOFNAMES);
 }
 
 void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (!client->isOp())
-		throw	sendMess(fd, codeErr("482") + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
+		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	if (tokens.size() < 3)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
-		throw	sendMess(fd, codeErr("403") + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
+		throw	sendMess(fd, "403 " + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (target->getFds() == client->getFds())
 		throw	sendMess(fd, ":localhost " + client->getNickname() + " :You can't kick yourself");
 	if (!channel->hasClient(target))
-		throw	sendMess(fd, codeErr("442") + target->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+		throw	sendMess(fd, "442 " + target->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 	std::string	reason;
 	if (!tokens[3].empty())
 		reason += tokens[3];
@@ -668,7 +663,7 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 
 	std::cout << GRN << "✅ Tous les clients et canaux ont été déconnectés proprement." << WHT << std::endl;
 	run_signal = 0;
-	std::cout << RED << "☠️ [SHUTDOWN] Serveur éteint par " << getDisplayName(fd) << WHT << std::endl;
+	std::cout << RED << "☠️  [SHUTDOWN] Serveur éteint par " << getDisplayName(fd) << WHT << std::endl;
 }
 
 void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:25:44 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 19:03:23 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 19:35:41 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,6 @@ class	Client {
 		std::string		getUsername(void) const;
 		std::string		getNickname(void) const;
 		std::string&	getBuffer(void);
-		bool			isOp(void) const;
 		bool			isAuth(void) const;
 		bool			isRegistered(void) const;
 
@@ -36,7 +35,6 @@ class	Client {
 
 		void	setUsername(std::string);
 		void	setNickname(std::string);
-		void	setOp(bool);
 		void	setAuth(bool);
 		void	setRegister(bool);
 

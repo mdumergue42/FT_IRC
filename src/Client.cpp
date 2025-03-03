@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:24:36 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 19:03:14 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 19:35:27 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,6 @@ Client &	Client::operator=( Client const & op ) {
 		this->_username = op.getUsername();
 		this->_nickname = op.getNickname();
 		this->_isAuth = op.isAuth();
-		this->_isOperator = op.isOp();
 	}
 	return *this;
 }
@@ -42,7 +41,6 @@ Client &	Client::operator=( Client const & op ) {
 
 void	Client::setNickname( std::string nickname ) {_nickname = nickname;}
 void	Client::setUsername( std::string username ) {_username = username;}
-void	Client::setOp( bool op ) {_isOperator = op;}
 void	Client::setAuth( bool auth ) {_isAuth = auth;}
 void	Client::setRegister(bool regi) {_isRegistered = regi;};
 
@@ -54,4 +52,3 @@ std::string		Client::getNickname( void ) const {return _nickname;}
 std::string&	Client::getBuffer( void ) {return _buf;}
 bool			Client::isAuth( void ) const {return _isAuth;}
 bool			Client::isRegistered(void) const {return _isRegistered;}
-bool			Client::isOp( void ) const {return _isOperator;};

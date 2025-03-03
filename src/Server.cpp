@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 18:53:08 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 19:36:22 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -445,7 +445,6 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 		if (!channel) {
 			channel = new Channel(chanName);
 			channel->setOperator(client, true);
-			client->setOp(true);
 			_channels.push_back(channel);
 		}
 
@@ -508,19 +507,26 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 
 void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 3)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
-		throw	sendMess(fd, codeErr("403") + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
-	if (!channel->isInviteOnly()) //discutable car ne doit pas renvoyer d'erreur juste ignorer
-		throw	sendMess(fd, tokens[1] + " is not in invite mode.");
+		throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+	if (!channel->hasClient(client))
+		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+	if (!channel->isOperator(client))
+		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
+	//if (!channel->isInviteOnly()) //discutable car ne doit pas renvoyer d'erreur juste ignorer
+	//	throw	sendMess(fd, tokens[1] + " is not in invite mode.");
+
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (!target)
-		throw	sendMess(fd, codeErr("401") + tokens[2] + ERR_NOSUCHNICK);
+		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
 	if (channel->hasClient(target)) //discutable
-		throw	sendMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
+		throw	sendMess(fd, "443 " + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
 	if (target->getNickname().empty() || target->getUsername().empty())
 		throw	sendMess(fd, codeErr("441") + target->getNickname() + tokens[1] + ERR_USERNOTINCHANNEL);
+
 	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost INVITE " + target->getNickname() + tokens[1] + "\r\n";
 	channel->sendChannelMessage(client, mess);
 	channel->addInviteList(target, true);
@@ -529,14 +535,14 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 
 void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
 	if (tokens.size() == 2)
 	{
 		Channel	*channel = getChannel(tokens[1]);
 		if (!channel)
-			throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+			throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		if (!channel->hasClient(client))
-			throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+			throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 		if (channel->getTopic().empty())
 			sendMess(fd, codeErr("331") + client->getNickname() + " " + tokens[1] + RPL_NOTOPIC);
 		else if (!channel->getTopic().empty())
@@ -549,17 +555,15 @@ void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>&
 	{
 		Channel	*channel = getChannel(tokens[1]);
 		if (!channel)
-			throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+			throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 		if (!channel->hasClient(client))
-			throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
-		if (!client->isOp())
-			throw	sendMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
+			throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 		else
 		{
 			channel->setTopic(tokens[2]);
 			channel->setTopicWriter(client->getNickname());
 		}
-		std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost " + tokens[0] + " " + tokens[1] + " :" + tokens[2] + "\r\n";
+		std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost TOPIC " + tokens[1] + " :" + tokens[2] + "\r\n";
 		channel->sendChannelMessage(client, mess);
 		send(fd, mess.c_str(), strlen(mess.c_str()), 0);
 	}
@@ -575,8 +579,6 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 		throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 	if (!channel->hasClient(client))
 		throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
-	if (!client->isOp())
-		throw	sendMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	
 	std::string modeStr = tokens[2];
 	bool add = true;

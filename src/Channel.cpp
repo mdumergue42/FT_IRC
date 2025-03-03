@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 14:50:15 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 17:53:47 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,12 +99,20 @@ void Channel::addClient(Client *client) {
 }
 
 void Channel::removeClient(Client *client) {
-    for (size_t i = 0; i < _clients.size(); i++) {
-        if (_clients[i] == client) {
-            _clients.erase(_clients.begin() + i);
-            return;
-        }
-    }
+	std::vector<Client *>::iterator it = std::find(_clients.begin(), _clients.end(), client);
+	if (it != _clients.end())
+	{
+		std::cout << "ERASSSEEEE\n";
+		_clients.erase(it);
+		removeOperator(client);
+		addInviteList(client, false);
+	}
+}
+
+void	Channel::removeOperator(Client *client) {
+	std::vector<Client *>::iterator it = std::find(_operators.begin(), _operators.end(), client);
+	if (it != _operators.end())
+		_operators.erase(it);
 }
 
 bool	Channel::hasClient(Client *client) {

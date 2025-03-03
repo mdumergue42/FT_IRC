@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:24:36 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/02 05:04:28 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 17:54:17 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@ Client::Client( int fds ) :
 	_nickname("*") {
 		_isAuth = false;
 		_isRegistered = false;
+		_isOperator = false;
 }
 
 Client::Client( Client const & copy ) {*this = copy;}

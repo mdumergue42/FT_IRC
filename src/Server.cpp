@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 16:29:22 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 17:58:37 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -445,6 +445,7 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 		if (!channel) {
 			channel = new Channel(chanName);
 			channel->setOperator(client, true);
+			client->setOp(true);
 			_channels.push_back(channel);
 		}
 
@@ -491,15 +492,11 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 	if (!channel)
 		throw	sendMess(fd, "403 " + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
 	Client *target = getClientByNickname(fd, tokens[2]);
-	if (target->getFds() == client->getFds())
-		throw	sendMess(fd, ":localhost " + client->getNickname() + " :You can't kick yourself");
+	if (!target)
+		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHNICK);
 	if (!channel->hasClient(target))
 		throw	sendMess(fd, "442 " + target->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
-	std::string	reason;
-	if (!tokens[3].empty())
-		reason += tokens[3];
-	else
-		reason += "No reason";
+	std::string	reason = (tokens.size() > 3) ? tokens[3] : " :No reason";
 	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost KICK " + tokens[1] + target->getNickname() + reason + "\r\n";
 	channel->sendChannelMessage(client, mess);
 	send(fd, mess.c_str(), strlen(mess.c_str()), 0);
@@ -562,7 +559,7 @@ void	Server::handleTopic(Client *client, int fd, const std::vector<std::string>&
 			channel->setTopic(tokens[2]);
 			channel->setTopicWriter(client->getNickname());
 		}
-		std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost " + tokens[0] + " " + tokens[1] + " :" + tokens[2];
+		std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost " + tokens[0] + " " + tokens[1] + " :" + tokens[2] + "\r\n";
 		channel->sendChannelMessage(client, mess);
 		send(fd, mess.c_str(), strlen(mess.c_str()), 0);
 	}
@@ -713,23 +710,16 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 }
 
 void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {
-	std::string	reason;
-	if (tokens.size() < 2)
-		reason += " :No reason";
-	else {
-		for (size_t i = 1; i < tokens.size(); ++i) {
-			reason += " " + tokens[i];
-		}
-	}
 
 	for (size_t i = 0; i < _channels.size(); i++) {
 		if (_channels[i]->hasClient(client))
 			_channels[i]->removeClient(client);
 	}
 
+	std::string	reason = (tokens.size() > 3) ? tokens[3] : " :No reason";
 	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
+	_clientByN.erase(client);
 	close(fd);
-
 	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison:" << reason << WHT << std::endl;
 }

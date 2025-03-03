@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:42:09 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/01 14:11:24 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 06:21:28 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,12 @@ class	Channel {
 		Channel & operator=(Channel const &);
 
 		std::string getName() const;
+		const std::vector<Client*>& getClients() const;
 		std::string	getTopic() const;
 		std::string	getTopicWriter() const;
 		std::string getKey() const;
 		int			getUserLimit() const;
+		bool		isOperator(Client*);
 		bool		isInviteOnly() const;
 		bool		isTopicRestricted() const;
 		bool		isInInviteList(Client*);

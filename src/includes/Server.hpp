@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/02 03:14:14 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 01:18:41 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ class	Server {
 
 		bool						isTaken(int, std::string);
 		std::vector<std::string>	splitCom(const std::string &);
+		std::vector<std::string>	splitCommas(const std::string &);
 		void						processCommand(Client*, int, const std::string &);
 		std::vector<std::string>	targetSplit(std::string);
 

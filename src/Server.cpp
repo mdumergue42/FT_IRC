@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/02 05:44:03 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 06:39:27 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -173,6 +173,17 @@ std::string	Server::sendMess(int fds, std::string message) {
 	}
 	std::cout << CYN << "📤 [SEND] [->" << getDisplayName(fds) << "] " << message << RESET;
 	return message;
+}
+
+
+std::vector<std::string> Server::splitCommas(const std::string &input) {
+	std::vector<std::string> result;
+	std::string token;
+	std::istringstream tokenStream(input);
+	while (std::getline(tokenStream, token, ',')) {
+		result.push_back(token);
+	}
+	return result;
 }
 
 std::vector<std::string> Server::splitCom(const std::string &input) {
@@ -366,7 +377,7 @@ void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& 
 	if (client->isAuth())
 		throw	sendMess(fd, ":localhost 462 " + client->getNickname() + ERR_ALREADYREGISTERED);
 	if (tokens.size() < 2)
-		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " PASS" + ERR_NEEDMOREPARAMS);
 	if (tokens[1] != _password)
 		throw	sendMess(fd, ":localhost 464 " + client->getNickname() + ERR_PASSWDMISMATCH);
 	client->setAuth(true);
@@ -395,7 +406,7 @@ void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& 
 void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& tokens) {
 	std::string	oldUser = client->getUsername();
 	if (tokens.size() < 2)
-		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " USER :Not enough parameters\r\n");
+		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " USER" + ERR_NEEDMOREPARAMS);
     if (isTaken(0, tokens[1])) {
         throw	sendMess(fd, ":localhost 433 " + tokens[1] + ERR_NICKNAMEINUSE);
 	}
@@ -403,11 +414,11 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
 		time_t now = time(NULL);
 		std::string creationTime = ctime(&now);
 		creationTime = creationTime.substr(0, creationTime.size() - 1);
-		sendMess(fd, ":localhost 001 " + client->getNickname() + " :Welcome to the ircserv, " + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");	
-		sendMess(fd, ":localhost 002 " + client->getNickname() + " :Your host is ircserv, running version 0.1\r\n");
-		sendMess(fd, ":localhost 003 " + client->getNickname() + " :This server was created " + creationTime + "\r\n");
-		sendMess(fd, ":localhost 004 " + client->getNickname() + " ircserv 0.1 o itkol\r\n");
-		sendMess(fd, ":localhost 005 " + client->getNickname() + " NICKLEN=9 CHANTYPES=# :are supported by this server\r\n");
+		sendMess(fd, ":localhost 001 " + client->getNickname() + RPL_WELCOME + client->getNickname() + "[!" + tokens[1] + "@localhost]\r\n");	
+		sendMess(fd, ":localhost 002 " + client->getNickname() + RPL_YOURHOST);
+		sendMess(fd, ":localhost 003 " + client->getNickname() + RPL_CREATED + creationTime + "\r\n");
+		sendMess(fd, ":localhost 004 " + client->getNickname() + RPL_MYINFO);
+		sendMess(fd, ":localhost 005 " + client->getNickname() + RPL_ISUPPORT);
 	}
 	client->setRegister(true);
 	client->setUsername(tokens[1]);
@@ -415,31 +426,60 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
 
 void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
-	Channel* channel = getChannel(tokens[1]);
-	if (!channel)
-	{
-		if (!channel->channelName(tokens[1]))
-			throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
-		channel = new Channel(tokens[1]);
-		channel->setOperator(client, false);
-		client->setOp(true);
-		_channels.push_back(channel);
+		throw	sendMess(fd, ":localhost 461 " + client->getNickname() + " JOIN" + ERR_NEEDMOREPARAMS);
+	
+	std::vector<std::string> channelList = splitCommas(tokens[1]);
+
+	std::vector<std::string> keyList;
+	if (tokens.size() >= 3)
+		keyList = splitCommas(tokens[2]);
+	
+	for (size_t i = 0; i < channelList.size(); i++) {
+		std::string chanName = channelList[i];
+		if (chanName.empty() || (chanName[0] != '#' && chanName[0] != '&'))
+			throw sendMess(fd, ":localhost 403 " + client->getNickname() + " " + chanName + ERR_NOSUCHCHANNEL);
+
+		std::string key = (i < keyList.size() ? keyList[i] : "");
+		
+		Channel* channel = getChannel(chanName);
+		if (!channel) {
+			channel = new Channel(chanName);
+			channel->setOperator(client, true);
+			_channels.push_back(channel);
+		}
+
+		if (channel->hasClient(client))
+			throw sendMess(fd, ":localhost 443 " + client->getNickname() + " " + chanName + ERR_USERONCHANNEL);
+
+		if (!channel->getKey().empty() && channel->getKey() != key)
+			throw sendMess(fd, ":localhost 475 " + client->getNickname() + " " + chanName + ERR_BADCHANNELKEY);
+
+		if (channel->isInviteOnly() && !channel->isInInviteList(client))
+			throw sendMess(fd, ":localhost 473 " + client->getNickname() + " " + chanName + ERR_INVITEONLYCHAN);
+		
+		channel->addInviteList(client, false);
+		channel->addClient(client);
+	
+		std::string mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost JOIN " + chanName + "\r\n";
+		channel->sendChannelMessage(client, mess);
+		send(fd, mess.c_str(), strlen(mess.c_str()), 0);
+		if (channel->getTopic().empty())
+			sendMess(fd, ":localhost 331 " + client->getNickname() + " " + chanName + RPL_NOTOPIC);
+		else
+			sendMess(fd, ":localhost 332 " + client->getNickname() + " " + chanName + " :" + channel->getTopic() + "\r\n");
+		std::string names;
+		std::vector<Client*> members = channel->getClients();
+		for (size_t j = 0; j < members.size(); j++) {
+			Client* member = members[j];
+			bool op = channel->isOperator(member);
+			if (op)
+				names += "@" + member->getNickname() + " ";
+			else
+				names += member->getNickname() + " ";
+		}
+		sendMess(fd, ":localhost 353 " + client->getNickname() + " = " + chanName + " :" + names + "\r\n");
+		sendMess(fd, ":localhost 366 " + client->getNickname() + " " + chanName + RPL_ENDOFNAMES);
 	}
-	if (channel->hasClient(client)) //discutable normalement on doit pas renvoyer d'erreurs mais c'est un peu golmon
-		throw	sendMess(fd, "443 " + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
-	if (!channel->getKey().empty())
-		throw	sendMess(fd, codeErr("475") + client->getNickname() + " " + tokens[1] + ERR_BADCHANNELKEY);
-	if (channel->isInviteOnly() && channel->isInInviteList(client) == false)
-		throw	sendMess(fd, codeErr("473") + client->getNickname() + " " + tokens[1] + ERR_INVITEONLYCHAN);
-	channel->addInviteList(client, false);
-	channel->addClient(client);
-	std::string mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost JOIN " + tokens[1] + "\r\n";
-	channel->sendChannelMessage(client, mess);
-	send(fd, mess.c_str(), strlen(mess.c_str()), 0);
-	sendMess(fd, "332 " + client->getNickname() + " " + tokens[1] + " :" + channel->getTopic());
-	sendMess(fd, "353 " + client->getNickname() + "=" + tokens[1] + " :@" + client->getNickname() + "\r\n");
-	sendMess(fd, "366 " + client->getNickname() + " " + tokens[1] + RPL_ENDOFNAMES);
 }
 
 void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& tokens) {

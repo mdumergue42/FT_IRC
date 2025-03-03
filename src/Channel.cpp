@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/01 14:59:41 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 06:21:19 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,12 +34,14 @@ Channel & Channel::operator=( Channel const & op ) {
 }
 
 std::string Channel::getName() const {return _name;}
+const std::vector<Client*>& Channel::getClients() const {return _clients;}
 std::string	Channel::getTopic() const {return _topic;}
 std::string	Channel::getTopicWriter() const {return _topicWriter;}
 std::string Channel::getKey() const {return _key;}
 int			Channel::getUserLimit() const {return _userLimit;}
 bool		Channel::isInviteOnly() const {return _inviteOnly;}
 bool		Channel::isTopicRestricted() const {return _topicRestricted;}
+bool		Channel::isOperator(Client* client) {return std::find(_operators.begin(), _operators.end(), client) != _operators.end();}
 bool		Channel::isInInviteList(Client *client) {
 	for (size_t i = 0; i < _invite.size(); i++){
 		std::cout << _invite[i]->getNickname() << std::endl;
@@ -51,7 +53,6 @@ bool		Channel::isInInviteList(Client *client) {
 	}
 	return false;
 }
-
 
 void	Channel::setTopic(std::string topic) {_topic = topic;}
 void	Channel::setTopicWriter(std::string topicW) {_topicWriter = topicW;}

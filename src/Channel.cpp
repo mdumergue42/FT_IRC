@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 06:21:19 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 14:50:15 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,7 +95,6 @@ void Channel::addClient(Client *client) {
         if (_clients[i] == client)
             return;
     }
-	std::cerr << "tagrandmere:" << client->getNickname() << "|" << std::endl;
     _clients.push_back(client);
 }
 

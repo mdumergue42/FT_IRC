@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 06:39:27 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/03 16:29:22 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -317,56 +317,56 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 
 void Server::run() {
 	try {
-	std::cout << "🏃 Lancement de la loop principale du serveur..." << std::endl;
-	while (run_signal)
-	{
-		signal(SIGINT, signalHandler);
-		int poll_count = poll(_pollfds.data(), _pollfds.size(), -1);
-		if (poll_count > 0)
-		{
-			if (_pollfds[0].revents & POLLIN)
-				NewClient();
-			for (size_t i = _pollfds.size() - 1; i > 0; i--) {
-				if (_pollfds[i].revents & POLLIN) {
-					char temp[1024];
-					ssize_t bytes;
-					Client* client = getFdsClient(_pollfds[i].fd);
-					if (!client) {
-						client = new Client(_pollfds[i].fd);
-						_clientByN[client] = "";
-						_clientfds.push_back(client);
-					}
-					std::string &buffer = client->getBuffer();
-					bytes = recv(_pollfds[i].fd, temp, sizeof(temp) - 1, 0);
-					if (bytes > 0) {
-						temp[bytes]= '\0';
-						buffer += temp;
-						size_t pos;
-						while ((pos = buffer.find("\n")) != std::string::npos) {
-							std::string command = buffer.substr(0, pos);
-							buffer.erase(0, pos + 1);
-							processCommand(client, _pollfds[i].fd, command);
-						}
-					}
-					else if (bytes == 0)
-					{
-						removeClient(_pollfds[i].fd);
+		std::cout << "🏃 Lancement de la loop principale du serveur..." << std::endl;
+		while (run_signal) {
+			signal(SIGINT, signalHandler);
+			int poll_count = poll(_pollfds.data(), _pollfds.size(), -1);
+			if (poll_count > 0) {
+				if (_pollfds[0].revents & POLLIN)
+					NewClient();
+				for (size_t i = _pollfds.size() - 1; i > 0; i--) {
+					if (!run_signal)
 						break;
-					}
-					else
-					{
-						if (errno == EWOULDBLOCK || errno == EAGAIN)
+					if (_pollfds[i].revents & POLLIN) {
+						char temp[1024];
+						ssize_t bytes;
+						Client* client = getFdsClient(_pollfds[i].fd);
+						if (!client) {
+							client = new Client(_pollfds[i].fd);
+							_clientByN[client] = "";
+							_clientfds.push_back(client);
+						}
+						std::string &buffer = client->getBuffer();
+						bytes = recv(_pollfds[i].fd, temp, sizeof(temp) - 1, 0);
+						if (bytes > 0) {
+							temp[bytes]= '\0';
+							buffer += temp;
+							size_t pos;
+							while ((pos = buffer.find("\n")) != std::string::npos) {
+								std::string command = buffer.substr(0, pos);
+								buffer.erase(0, pos + 1);
+								processCommand(client, _pollfds[i].fd, command);
+								if (!run_signal)
+									break;
+							}
+						}
+						else if (bytes == 0) {
+							removeClient(_pollfds[i].fd);
 							break;
+						}
 						else {
-							std::cerr << "Error receiving data on fd " << _pollfds[i].fd << std::endl;
-							break;
+							if (errno == EWOULDBLOCK || errno == EAGAIN)
+								break;
+							else {
+								std::cerr << "Error receiving data on fd " << _pollfds[i].fd << std::endl;
+								break;
+							}
 						}
 					}
 				}
 			}
 		}
-	}
-	close(_server_fd);
+		close(_server_fd);
 	}
 	catch(std::exception & e) {}
 }
@@ -691,19 +691,25 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 	(void)client;
 	if (tokens.size() != 1)
 		throw	sendMess(fd, RED + "DIE: Too much parameter" + WHT);	
+	std::string name = getDisplayName(fd);
+	std::cout << RED << "🔥 [ALERTE] DIE reçue de " << name << ". Extinction du serveur." << WHT << std::endl;
 
-	std::cout << RED << "🔥 [ALERTE] DIE reçue de " << getDisplayName(fd) << ". Extinction du serveur." << WHT << std::endl;
-
+	run_signal = 0;
 	while (!_clientfds.empty()) {
 		Client *c = _clientfds.back();
 		close(c->getFds());
-		delete c;
+ 		delete c;
 		_clientfds.pop_back();
 	}
 
+	while (!_channels.empty()) {
+		delete _channels.back();
+		_channels.pop_back();
+	}
+
+	_pollfds.clear();
 	std::cout << GRN << "✅ Tous les clients et canaux ont été déconnectés proprement." << WHT << std::endl;
-	run_signal = 0;
-	std::cout << RED << "☠️  [SHUTDOWN] Serveur éteint par " << getDisplayName(fd) << WHT << std::endl;
+	std::cout << RED << "☠️  [SHUTDOWN] Serveur éteint par " << name << WHT << std::endl;
 }
 
 void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {

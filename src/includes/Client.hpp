@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 17:25:44 by madumerg          #+#    #+#             */
-/*   Updated: 2025/02/25 19:06:24 by basverdi         ###   ########.fr       */
+/*   Updated: 2025/03/03 19:03:23 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,6 @@ class	Client {
 
 	private :
 		int		_fds;
-		bool	_isOperator;
 		bool	_isAuth;
 		bool	_isRegistered;
 

@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 17:58:37 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/03 18:53:08 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -484,20 +484,22 @@ void	Server::handleJoin(Client * client, int fd, const std::vector<std::string>&
 }
 
 void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& tokens) {
-	if (!client->isOp())
-		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	if (tokens.size() < 3)
-		throw	sendMess(fd, "461 " + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
+		throw	sendMess(fd, "461 " + client->getNickname() + " KICK" + ERR_NEEDMOREPARAMS);
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
-		throw	sendMess(fd, "403 " + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);
+		throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+	if (!channel->hasClient(client))
+		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+	if (!channel->isOperator(client)) //a faire
+		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	Client *target = getClientByNickname(fd, tokens[2]);
 	if (!target)
-		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHNICK);
+		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
 	if (!channel->hasClient(target))
-		throw	sendMess(fd, "442 " + target->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
-	std::string	reason = (tokens.size() > 3) ? tokens[3] : " :No reason";
-	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost KICK " + tokens[1] + target->getNickname() + reason + "\r\n";
+		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[2] + ERR_NOTONCHANNEL);
+	std::string	reason = (tokens.size() > 3) ? tokens[3] : "No reason";
+	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost KICK " + tokens[1] + " " + target->getNickname() + " :" + reason + "\r\n";
 	channel->sendChannelMessage(client, mess);
 	send(fd, mess.c_str(), strlen(mess.c_str()), 0);
 	sendMess(target->getFds(), "You have been kicked from " + tokens[1] + " by " + client->getNickname() + ". Reason: " + reason + "\r\n");
@@ -505,10 +507,8 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 }
 
 void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>& tokens) {
-	if (tokens.size() < 2)
+	if (tokens.size() < 3)
 		throw	sendMess(fd, codeErr("461") + client->getNickname() + " " + tokens[0] + ERR_NEEDMOREPARAMS);
-	if (!client->isOp())
-		throw	sendMess(fd, codeErr("482") + client->getNickname() + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	Channel	*channel = getChannel(tokens[1]);
 	if (!channel)
 		throw	sendMess(fd, codeErr("403") + client->getNickname() + tokens[1] + ERR_NOSUCHCHANNEL);

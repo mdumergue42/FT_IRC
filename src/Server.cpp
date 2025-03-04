@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 19:36:22 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/04 12:57:31 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -231,6 +231,7 @@ void	Server::sendServerMessage(Client *client, std::string message) {
 //////////// Exec //////////////
 
 void Server::initserv() {
+	try {
 	this->_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (this->_server_fd == -1)
 		throw	std::runtime_error("Server socket creation failed");
@@ -269,6 +270,10 @@ void Server::initserv() {
 	_pollfds.push_back(server_pollfd);
 	
 	std::cout << "🚀 Serveur prêt et en attente de connexions ! 🎉" << std::endl;
+	}
+	catch(const std::exception & e) {
+		std::cout << e.what() << std::endl;
+	}
 }
 
 void Server::NewClient() {
@@ -490,13 +495,13 @@ void	Server::handleKick(Client *client, int fd, const std::vector<std::string>& 
 		throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 	if (!channel->hasClient(client))
 		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
-	if (!channel->isOperator(client)) //a faire
+	if (!channel->isOperator(client))
 		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	Client *target = getClientByNickname(fd, tokens[2]);
-	if (!target)
-		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
-	if (!channel->hasClient(target))
-		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[2] + ERR_NOTONCHANNEL);
+//	if (!target)
+//		throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
+//	if (!channel->hasClient(target))
+//		throw	sendMess(fd, "442 " + client->getNickname() + " " + tokens[2] + ERR_NOTONCHANNEL);
 	std::string	reason = (tokens.size() > 3) ? tokens[3] : "No reason";
 	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost KICK " + tokens[1] + " " + target->getNickname() + " :" + reason + "\r\n";
 	channel->sendChannelMessage(client, mess);
@@ -577,6 +582,8 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 	Channel *channel = getChannel(channelName);
 	if (!channel)
 		throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+	if (!channel->isOperator(client))
+		throw	sendMess(fd, "482 " + client->getNickname() + " " + tokens[1] + ERR_CHANOPRIVSNEEDED);
 	if (!channel->hasClient(client))
 		throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
 	
@@ -669,9 +676,9 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		{
 			Channel *channel = getChannel(*it);
 			if (!channel)
-				throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+				throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 			if (!channel->hasClient(client))
-				throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[1] + ERR_NOTONCHANNEL);
+				throw	sendMess(fd, "404 " + client->getNickname() + " " + tokens[1] + ERR_CANNOTSENDTOCHAN);
 			else
 			{
 				std::string	messChannel = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost PRIVMSG " + channel->getName() + " :" + fullMessage;
@@ -680,6 +687,8 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		}
 		else
 		{
+			if (!tmp)
+				throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
 			std::string	messClient = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost PRIVMSG " + tmp->getNickname() + " :" + fullMessage;
 			send(tmp->getFds(), messClient.c_str(), strlen(messClient.c_str()), 0);
 		}
@@ -688,13 +697,14 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 
 void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& tokens) {	
 	(void)client;
-	if (tokens.size() != 1)
-		throw	sendMess(fd, RED + "DIE: Too much parameter" + WHT);	
+	(void)tokens;
+//	if (tokens.size() != 1)
+//		throw	sendMess(fd, RED + "DIE: Too much parameter" + WHT);	
 	std::string name = getDisplayName(fd);
 	std::cout << RED << "🔥 [ALERTE] DIE reçue de " << name << ". Extinction du serveur." << WHT << std::endl;
 
 	run_signal = 0;
-	while (!_clientfds.empty()) {
+	/*while (!_clientfds.empty()) {
 		Client *c = _clientfds.back();
 		close(c->getFds());
  		delete c;
@@ -704,9 +714,9 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 	while (!_channels.empty()) {
 		delete _channels.back();
 		_channels.pop_back();
-	}
+	}*/
 
-	_pollfds.clear();
+	//_pollfds.clear();
 	std::cout << GRN << "✅ Tous les clients et canaux ont été déconnectés proprement." << WHT << std::endl;
 	std::cout << RED << "☠️  [SHUTDOWN] Serveur éteint par " << name << WHT << std::endl;
 }

@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/03/03 05:48:50 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/05 04:20:13 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,8 @@
 #include <errno.h>
 #include <algorithm>
 #include <csignal>
+#include <sstream>
+#include <ctime>
 
 void	signalHandler(int);
 const std::string	codeErr(std::string);

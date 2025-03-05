@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/05 04:35:39 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/05 14:21:35 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -679,9 +679,9 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 
 void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
-		throw	sendMess(fd, codeErr("411") + client->getNickname() + ERR_NORECIPIENT + "(" + tokens[0] + ")");
+		throw	sendMess(fd, "411 " + client->getNickname() + ERR_NORECIPIENT + " (PRIVMSG)\r\n");
 	if (tokens.size() < 3)
-		throw	sendMess(fd, codeErr("412") + client->getNickname() + ERR_NOTEXTTOSEND);
+		throw	sendMess(fd, "412 " + client->getNickname() + ERR_NOTEXTTOSEND);
 	std::string	fullMessage = "";
 	std::vector<std::string> targets = targetSplit(tokens[1]);
 
@@ -699,9 +699,9 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		{
 			Channel *channel = getChannel(*it);
 			if (!channel)
-				throw	sendMess(fd, "403 " + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
+				throw	sendMess(fd, codeErr("403") + client->getNickname() + " " + tokens[1] + ERR_NOSUCHCHANNEL);
 			if (!channel->hasClient(client))
-				throw	sendMess(fd, "404 " + client->getNickname() + " " + tokens[1] + ERR_CANNOTSENDTOCHAN);
+				throw	sendMess(fd, codeErr("404") + client->getNickname() + " " + tokens[1] + ERR_CANNOTSENDTOCHAN);
 			else
 			{
 				std::string	messChannel = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost PRIVMSG " + channel->getName() + " " + fullMessage;
@@ -711,7 +711,7 @@ void	Server::handlePrivMsg(Client *client, int fd, const std::vector<std::string
 		else
 		{
 			if (!tmp)
-				throw	sendMess(fd, "401 " + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
+				throw	sendMess(fd, codeErr("401") + client->getNickname() + " " + tokens[2] + ERR_NOSUCHNICK);
 			std::string	messClient = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost PRIVMSG " + tmp->getNickname() + " :" + fullMessage;
 			send(tmp->getFds(), messClient.c_str(), strlen(messClient.c_str()), 0);
 			std::cout << BLU << "📤 [SEND] [->" << tmp->getNickname() << "] " << messClient << RESET;

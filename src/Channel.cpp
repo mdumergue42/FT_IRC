@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/10 19:43:52 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/05 04:35:43 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/05 11:14:01 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,10 +96,7 @@ bool		Channel::isInInviteList(Client *client) {
 	for (size_t i = 0; i < _invite.size(); i++){
 		std::cout << _invite[i]->getNickname() << std::endl;
 		if (_invite[i]->getFds() == client->getFds())
-		{
-			std::cerr << "TROUVER\n";
 			return true;
-		}
 	}
 	return false;
 }
@@ -125,19 +122,13 @@ void	Channel::setOperator(Client* client, bool flag) {
 void	Channel::addInviteList(Client *client, bool flag) {
 	if (flag == true) {
 		if (std::find(_invite.begin(), _invite.end(), client) == _invite.end())
-		{
-			std::cerr << "il est add\n";
 			_invite.push_back(client);
-		}
 	}
 	else
 	{
 		std::vector<Client *>::iterator it = std::find(_invite.begin(), _invite.end(), client);
 		if (it != _invite.end())
-		{
-			std::cerr << "il a join donc degage list\n";
 			_invite.erase(it);
-		}
 	}
 }
 
@@ -153,7 +144,6 @@ void Channel::removeClient(Client *client) {
 	std::vector<Client *>::iterator it = std::find(_clients.begin(), _clients.end(), client);
 	if (it != _clients.end())
 	{
-		std::cout << "ERASSSEEEE\n";
 		_clients.erase(it);
 		removeOperator(client);
 		addInviteList(client, false);

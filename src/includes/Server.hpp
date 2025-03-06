@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/03 01:18:41 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/06 13:30:54 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@ class	Server {
 
 		//// Utils ////
 
+		bool						isValidNickname(std::string);
 		bool						isTaken(int, std::string);
 		std::vector<std::string>	splitCom(const std::string &);
 		std::vector<std::string>	splitCommas(const std::string &);

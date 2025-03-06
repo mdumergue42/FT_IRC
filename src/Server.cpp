@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/05 17:11:48 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/06 13:36:36 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,15 +51,17 @@ Server::~Server( void ) {
 	for (std::vector<struct pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); it++) {
 		close(it->fd);
 	}
-
+	_pollfds.clear();
 	for (std::vector<Client *>::iterator it = _clientfds.begin(); it != _clientfds.end(); it++) {
 		close((*it)->getFds());
 		delete *it;
 	}
-	
+	_clientfds.clear();
 	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
 		delete *it;
 	}
+	_channels.clear();
+	_clientByN.clear();
 	std::cout << "🧹 [CLEANUP] Fermeture du serveur, nettoyage des clients et canaux..." << std::endl;
 }
 
@@ -138,6 +140,45 @@ void	Server::removeChannel(void) {
 }
 
 ///////////// Utils ///////////////
+
+bool	Server::isValidNickname(std::string nickname) {
+	if (!(nickname.size() > 0 && nickname.size() < 10))
+		return false;
+	const char	arrErr[25] = {'@', '!', '#', '$', '%', '^', '&', '*', '(', ')', '=', '+', '{', '}', '[', ']', ':', ';', '"', '\'', '<', '>', ',', '?', '/'};
+	const char	arrF[12] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_'};
+	const char	arrV[] = {
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',                           
+    '-', '_',                                                               
+    '\0'                                                                       
+};
+
+	for (size_t i = 0; i < nickname.size(); i++) {
+		for (size_t j = 0; j < 25; j++) {
+			if (nickname[i] == arrErr[j])
+				return false;
+		}
+	}
+	for (size_t i = 0; i < 12; i++) {
+		if (nickname[0] == arrF[i])
+			return false;
+	}
+
+	for (size_t i = 0; i < nickname.size(); i++) {
+		bool valid = false;
+		for (size_t j = 0; arrV[j] != '\0'; j++) {
+			if (nickname[i] == arrV[j]) {
+				valid = true;
+				break;
+			}
+		}
+		if (!valid)
+			return false;
+	}
+
+	return true;
+}
 
 bool	Server::isTaken( int code, std::string name ) {
 	bool	isTaken = false;
@@ -392,6 +433,8 @@ void	Server::handlePass(Client* client, int fd, const std::vector<std::string>& 
 void	Server::handleNick(Client* client, int fd, const std::vector<std::string>& tokens) {
 	if (tokens.size() < 2)
 		throw	sendMess(fd, codeErr("431") + client->getNickname() + ERR_NONICKNAMEGIVEN);
+	if (!isValidNickname(tokens[1]))
+		throw	sendMess(fd, codeErr("432") + "client " + tokens[1] + ERR_ERRONEUSNICKNAME);
 	if (isTaken(1, tokens[1]))
         throw	sendMess(fd, codeErr("433") + client->getNickname() + " " + tokens[1] + ERR_NICKNAMEINUSE);
 	std::string	oldNick = client->getNickname();
@@ -740,6 +783,19 @@ void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& 
 	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
 	_clientByN.erase(client);
+	for (std::vector<Client *>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
+        if (*it == client) {
+            _clientfds.erase(it);
+            break;
+        }
+    }
+	for (std::vector<struct pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it) {
+		if (it->fd == fd) {
+			std::cout << "🗑 Suppression de fd " << fd << " de _pollFds" << std::endl;
+			_pollfds.erase(it);
+			break;
+		}
+	}
 	close(fd);
 	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison:" << reason << RESET << std::endl;
 }

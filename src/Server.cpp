@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/06 13:36:36 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/07 02:38:21 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,7 +123,7 @@ void Server::removeClient(int fd) {
 	}
 	for (std::vector<Client*>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
 		if ((*it)->getFds() == fd) {
-			delete *it; // avec pas de leaks mais invalid read size
+			delete *it;
 			_clientfds.erase(it);
 			break;
 		}
@@ -702,8 +702,8 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
                         Client* target = getClientByNickname(fd, targetNickname);
 						if (!target)
 							throw	sendMess(fd, codeErr("401") + tokens[2] + ERR_NOSUCHNICK);
-						if (channel->hasClient(target))
-							throw	sendMess(fd, codeErr("443") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERONCHANNEL);
+						if (!channel->hasClient(target))
+							throw	sendMess(fd, codeErr("441") + client->getNickname() + " " + tokens[2] + " " + tokens[1] + ERR_USERNOTINCHANNEL);
                         channel->setOperator(target, add);
                         paramIndex++;
                     }
@@ -714,8 +714,12 @@ void	Server::handleMode(Client *client, int fd, const std::vector<std::string>& 
 			}
 		}
 	}
-	std::string newModes = channel->getModes();
-    std::string modeMessage = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost MODE " + channelName + " " + newModes + "\r\n";
+	std::string extraParams;
+	for (size_t i = 3; i < tokens.size(); i++) {
+		extraParams += " " + tokens[i];
+	}
+    std::string modeMessage = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost MODE " + channelName + " " + modeStr + extraParams + "\r\n";
+	send(fd, modeMessage.c_str(), strlen(modeMessage.c_str()), 0);
     channel->sendChannelMessage(client, modeMessage);
 }
 
@@ -779,23 +783,30 @@ void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& 
 			_channels[i]->removeClient(client);
 	}
 
-	std::string	reason = (tokens.size() > 3) ? tokens[3] : " :No reason";
+	std::string reason;
+    if (tokens.size() > 1) {
+        for (size_t i = 1; i < tokens.size(); i++)
+            reason += tokens[i] + " ";
+		if (!reason.empty())
+            reason.erase(reason.size() - 1);
+    } else {
+        reason = " :No reason";
+	}
 	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
 	sendServerMessage(client, fullMess);
 	_clientByN.erase(client);
 	for (std::vector<Client *>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
-        if (*it == client) {
-            _clientfds.erase(it);
-            break;
-        }
-    }
+		if (*it == client) {
+			_clientfds.erase(it);
+			break;
+		}
+	}
 	for (std::vector<struct pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it) {
 		if (it->fd == fd) {
-			std::cout << "🗑 Suppression de fd " << fd << " de _pollFds" << std::endl;
 			_pollfds.erase(it);
 			break;
 		}
 	}
 	close(fd);
-	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison:" << reason << RESET << std::endl;
+	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison " << reason << RESET << std::endl;
 }

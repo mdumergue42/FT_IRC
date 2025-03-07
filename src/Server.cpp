@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/07 02:38:21 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/07 11:37:04 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,6 @@ Server::Server(std::string port, std::string password) :
 	_commandMap["TOPIC"] = &Server::handleTopic;
 	_commandMap["PRIVMSG"] = &Server::handlePrivMsg;
 	_commandMap["DIE"] = &Server::handleDie;
-	_commandMap["QUIT"] = &Server::handleQuit;
 
 	std::cout << "🚀 Initialisation des commandes serveur... ✅" << std::endl;
 }
@@ -774,39 +773,4 @@ void	Server::handleDie(Client *client, int fd, const std::vector<std::string>& t
 	run_signal = 0;	
 	std::cout << GRN << "✅ Tous les clients et canaux ont été déconnectés." << RESET << std::endl;
 	std::cout << RED << "☠️  [SHUTDOWN] Serveur éteint par " << name << RESET << std::endl;
-}
-
-void	Server::handleQuit(Client *client, int fd, const std::vector<std::string>& tokens) {
-
-	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i]->hasClient(client))
-			_channels[i]->removeClient(client);
-	}
-
-	std::string reason;
-    if (tokens.size() > 1) {
-        for (size_t i = 1; i < tokens.size(); i++)
-            reason += tokens[i] + " ";
-		if (!reason.empty())
-            reason.erase(reason.size() - 1);
-    } else {
-        reason = " :No reason";
-	}
-	std::string	fullMess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost QUIT" + reason + "\r\n";
-	sendServerMessage(client, fullMess);
-	_clientByN.erase(client);
-	for (std::vector<Client *>::iterator it = _clientfds.begin(); it != _clientfds.end(); ++it) {
-		if (*it == client) {
-			_clientfds.erase(it);
-			break;
-		}
-	}
-	for (std::vector<struct pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it) {
-		if (it->fd == fd) {
-			_pollfds.erase(it);
-			break;
-		}
-	}
-	close(fd);
-	std::cout << YEL << "👋 [QUIT] " << getDisplayName(fd) << " quitte le serveur. Raison " << reason << RESET << std::endl;
 }

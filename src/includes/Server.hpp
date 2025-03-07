@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 11:31:12 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/06 13:30:54 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/07 11:37:14 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,6 @@ class	Server {
 		void		handleTopic(Client*, int, const std::vector<std::string>&);
 		void		handlePrivMsg(Client*, int, const std::vector<std::string>&);
 		void		handleDie(Client *, int, const std::vector<std::string>&);
-		void		handleQuit(Client *, int, const std::vector<std::string>&);
 
 	private :
 		int							_port;

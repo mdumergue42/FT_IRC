@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/07 12:23:26 by madumerg         ###   ########.fr       */
+/*   Updated: 2025/03/07 12:40:55 by madumerg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -568,11 +568,8 @@ void	Server::handleInvite(Client *client, int fd, const std::vector<std::string>
 		throw	sendMess(fd, codeErr("442") + client->getNickname() + " " + tokens[2] + ERR_NOTONCHANNEL);
 	if (!channel->isOperator(client))
 		throw	sendMess(fd, codeErr("482") + client->getNickname() + " " + tokens[2] + ERR_CHANOPRIVSNEEDED);
-	if (channel->hasClient(target)) //discutable
+	if (channel->hasClient(target))
 		throw	sendMess(fd, codeErr("443") + client->getNickname() + " " + tokens[1] + " " + tokens[2] + ERR_USERONCHANNEL);
-
-//	if (target->getNickname().empty() || target->getUsername().empty())
-//		throw	sendMess(fd, codeErr("441") + target->getNickname() + tokens[1] + ERR_USERNOTINCHANNEL);
 
 	std::string	mess = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost INVITE " + target->getNickname() + tokens[2] + "\r\n";
 	std::string targetmess = "You have been invited to " + tokens[2] + " by " + client->getNickname() + " (localhost)\r\n";

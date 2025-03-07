@@ -6,7 +6,7 @@
 /*   By: basverdi <basverdi@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 15:48:28 by basverdi          #+#    #+#             */
-/*   Updated: 2025/03/05 04:20:13 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/07 15:08:09 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,6 +98,8 @@ const std::string ERR_BADCHANNELKEY = " :Cannot join channel (+k)\r\n";
 
 //482
 const std::string ERR_CHANOPRIVSNEEDED = " :You're not channel operator\r\n";
+
+#define USERLEN 9
 
 #ifdef __linux
 	#define nullptr 0

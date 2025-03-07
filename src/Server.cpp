@@ -6,7 +6,7 @@
 /*   By: madumerg <madumerg@42angouleme.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/08 13:58:31 by madumerg          #+#    #+#             */
-/*   Updated: 2025/03/07 02:38:21 by baverdi          ###   ########.fr       */
+/*   Updated: 2025/03/07 15:14:48 by baverdi          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -342,13 +342,13 @@ void Server::processCommand(Client* client, int fd, const std::string &command) 
 		std::cout << MAG << "📥 [COMMAND] [<-" << getDisplayName(fd) << "] " << command << WHT << std::endl;
 		if (!client->isAuth()) {
 			if (command != "CAP LS 302\r" && com != "PASS")
-				throw sendMess(fd, ":localhost 451 " + client->getNickname() + " :You have not registered\r\n");
+				throw sendMess(fd, codeErr("451") + client->getNickname() + " :You have not registered\r\n");
     	} else if (client->getNickname().empty() || client->getNickname() == "*") {
-			if (com != "NICK")
-		        throw sendMess(fd, ":localhost 431 * :No nickname given\r\n");
+			if (com != "NICK" && com != "USER")
+		        throw sendMess(fd, codeErr("431") + "* :No nickname given\r\n");
 		} else if (client->getUsername().empty()) {
 		    if (com != "USER")
-		        throw sendMess(fd, ":localhost 451 " + client->getNickname() + " :You have not registered\r\n");
+		        throw sendMess(fd, codeErr("451") + client->getNickname() + " :You have not registered\r\n");
 		}
 		if (command != "CAP LS 302\r") {
 		    std::map<std::string, CommandFunc>::iterator it = _commandMap.find(com);
@@ -455,9 +455,11 @@ void	Server::handleUser(Client* client, int fd, const std::vector<std::string>& 
 	std::string	oldUser = client->getUsername();
 	if (tokens.size() < 2)
 		throw	sendMess(fd, codeErr("461") + client->getNickname() + " USER" + ERR_NEEDMOREPARAMS);
-    if (isTaken(0, tokens[1])) {
-        throw	sendMess(fd, codeErr("433") + tokens[1] + ERR_NICKNAMEINUSE);
-	}
+	std::string username = tokens[1];
+	if (username.empty())
+        throw sendMess(fd, codeErr("461") + client->getNickname() + " USER :Username cannot be empty\r\n");
+	if (username.length() > USERLEN)
+        username = username.substr(0, USERLEN);
 	if (oldUser.empty()) {
 		time_t now = time(NULL);
 		std::string creationTime = ctime(&now);

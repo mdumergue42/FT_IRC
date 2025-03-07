@@ -20,7 +20,7 @@ const std::string	codeErr(std::string code) {
 
 int main(int ac, char **av) {
 	if (ac != 3)
-		std::cout << "Erreur fdp !" << std::endl;
+		std::cout << "Wrong numbers of arguments" << std::endl;
 	
 	Server irc_server(av[1], av[2]);
 
